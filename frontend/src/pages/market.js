@@ -1,9 +1,13 @@
 import { api } from '../api.js';
-import { escHtml, showToast, formatTwd } from '../utils.js';
+import { escHtml, showToast, formatTwd, paginate, renderPagination } from '../utils.js';
 
 let searchResults = [];
+let watchlist = { rate: 0, items: [] };
+let pageNum = 1;
 
 export async function renderMarket(container) {
+  pageNum = 1;
+
   container.innerHTML = `
     <div class="page-header">
       <div>
@@ -31,6 +35,7 @@ export async function renderMarket(container) {
       <div id="watchlist">
         <div class="loading-spinner"><div class="spinner"></div><span>載入中...</span></div>
       </div>
+      <div id="watchlist-pagination"></div>
     </div>`;
 
   document.getElementById('market-search-form').addEventListener('submit', e => {
@@ -118,46 +123,61 @@ async function loadWatchlist() {
   const el = document.getElementById('watchlist');
   if (!el) return;
   try {
-    const { rate, items } = await api.watchlist();
-    if (!items.length) {
-      el.innerHTML = `<div class="empty-state"><div class="empty-icon">⭐</div><div class="empty-title">還沒有追蹤的卡片</div><div class="empty-desc">搜尋卡片後按「＋ 追蹤」，每次更新資料時會記錄價格變化</div></div>`;
-      return;
-    }
-    el.innerHTML = `
-      <div class="table-wrap">
-        <table class="price-table">
-          <thead>
-            <tr>
-              <th></th>
-              <th>卡片</th>
-              <th class="num">台幣</th>
-              <th class="num">日幣</th>
-              <th class="num">變動</th>
-              <th class="num">在庫</th>
-              <th>更新時間</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            ${items.map(i => {
-              const change = i.previousJpy && i.priceJpy ? (i.priceJpy - i.previousJpy) / i.previousJpy * 100 : null;
-              return `
-                <tr>
-                  <td>${i.imageUrl ? `<img src="${escHtml(i.imageUrl)}" alt="" class="price-card-img" loading="lazy">` : ''}</td>
-                  <td class="wrap"><a href="${escHtml(i.url)}" target="_blank" rel="noopener" style="color:inherit"><strong>${escHtml(i.name)}</strong></a><br><span class="text-muted text-sm">${escHtml(i.set)} · ${escHtml(i.cardNumber)} · ${escHtml(i.rarity)}</span></td>
-                  <td class="num"><span class="price-value">${formatTwd(i.priceTwd)}</span></td>
-                  <td class="num">${i.priceJpy != null ? i.priceJpy.toLocaleString() + ' 円' : '—'}</td>
-                  <td class="num">${change == null ? '<span class="text-muted">—</span>' : change > 0 ? `<span class="price-change-up">▲ ${change.toFixed(1)}%</span>` : `<span class="price-change-down">▼ ${Math.abs(change).toFixed(1)}%</span>`}</td>
-                  <td class="num">${i.stock ?? '—'}</td>
-                  <td><span class="text-muted text-sm">${i.updatedAt ? new Date(i.updatedAt).toLocaleString('zh-TW') : '—'}</span></td>
-                  <td><button class="btn-secondary btn-sm" data-unwatch="${escHtml(i.id)}">移除</button></td>
-                </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
-      <p class="form-hint" style="margin-top:10px">匯率 1 円 ≈ NT$${rate.toFixed(4)} · 每次排程更新時自動記錄價格 · 價格僅供參考，實際以各平台成交為準</p>`;
+    watchlist = await api.watchlist();
+    renderWatchlist();
   } catch (err) {
     el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">無法載入追蹤清單</div><div class="empty-desc">${escHtml(err.message)}</div></div>`;
   }
+}
+
+// Stays on the same page after adding or removing a card (clamped if that page is now gone)
+function renderWatchlist() {
+  const el = document.getElementById('watchlist');
+  if (!el) return;
+  const { rate } = watchlist;
+  const { items, ...pageInfo } = paginate(watchlist.items, pageNum);
+  pageNum = pageInfo.page;
+  renderPagination(document.getElementById('watchlist-pagination'), pageInfo, p => {
+    pageNum = p;
+    renderWatchlist();
+  });
+
+  if (!items.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">⭐</div><div class="empty-title">還沒有追蹤的卡片</div><div class="empty-desc">搜尋卡片後按「＋ 追蹤」，每次更新資料時會記錄價格變化</div></div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="table-wrap">
+      <table class="price-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>卡片</th>
+            <th class="num">台幣</th>
+            <th class="num">日幣</th>
+            <th class="num">變動</th>
+            <th class="num">在庫</th>
+            <th>更新時間</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items.map(i => {
+            const change = i.previousJpy && i.priceJpy ? (i.priceJpy - i.previousJpy) / i.previousJpy * 100 : null;
+            return `
+              <tr>
+                <td>${i.imageUrl ? `<img src="${escHtml(i.imageUrl)}" alt="" class="price-card-img" loading="lazy">` : ''}</td>
+                <td class="wrap"><a href="${escHtml(i.url)}" target="_blank" rel="noopener" style="color:inherit"><strong>${escHtml(i.name)}</strong></a><br><span class="text-muted text-sm">${escHtml(i.set)} · ${escHtml(i.cardNumber)} · ${escHtml(i.rarity)}</span></td>
+                <td class="num"><span class="price-value">${formatTwd(i.priceTwd)}</span></td>
+                <td class="num">${i.priceJpy != null ? i.priceJpy.toLocaleString() + ' 円' : '—'}</td>
+                <td class="num">${change == null ? '<span class="text-muted">—</span>' : change > 0 ? `<span class="price-change-up">▲ ${change.toFixed(1)}%</span>` : `<span class="price-change-down">▼ ${Math.abs(change).toFixed(1)}%</span>`}</td>
+                <td class="num">${i.stock ?? '—'}</td>
+                <td><span class="text-muted text-sm">${i.updatedAt ? new Date(i.updatedAt).toLocaleString('zh-TW') : '—'}</span></td>
+                <td><button class="btn-secondary btn-sm" data-unwatch="${escHtml(i.id)}">移除</button></td>
+              </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p class="form-hint" style="margin-top:10px">匯率 1 円 ≈ NT$${rate.toFixed(4)} · 每次排程更新時自動記錄價格 · 價格僅供參考，實際以各平台成交為準</p>`;
 }

@@ -1,12 +1,20 @@
 import { api } from '../api.js';
-import { formatDate, regionLabel, escHtml, deadlineClass, deadlineText, daysUntil, startCountdown, debounce } from '../utils.js';
+import { formatDate, regionLabel, escHtml, deadlineClass, deadlineText, daysUntil, startCountdown, debounce, paginate, renderPagination } from '../utils.js';
 
 let allTournaments = [];
 let currentRegion = 'all';
 let showUpcoming = true;
+let searchQuery = '';
+let pageNum = 1;
 let countdownIntervals = [];
 
 export async function renderTournaments(container) {
+  // Start fresh each visit so the state matches the freshly rendered tabs and search box
+  currentRegion = 'all';
+  showUpcoming = true;
+  searchQuery = '';
+  pageNum = 1;
+
   container.innerHTML = `
     <div class="page-header">
       <div>
@@ -31,10 +39,13 @@ export async function renderTournaments(container) {
       <div id="tournaments-grid" class="items-grid">
         <div class="loading-spinner" style="grid-column:1/-1"><div class="spinner"></div><span>載入中...</span></div>
       </div>
+      <div id="tournaments-pagination"></div>
     </div>`;
 
   document.getElementById('tournament-search').addEventListener('input', debounce(e => {
-    renderTournamentList(e.target.value);
+    searchQuery = e.target.value;
+    pageNum = 1;
+    renderTournamentList();
   }, 300));
 
   document.getElementById('tournament-region-tabs').addEventListener('click', e => {
@@ -43,6 +54,7 @@ export async function renderTournaments(container) {
     document.querySelectorAll('#tournament-region-tabs .filter-tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
     currentRegion = btn.dataset.region;
+    pageNum = 1;
     renderTournamentList();
   });
 
@@ -52,6 +64,7 @@ export async function renderTournaments(container) {
     document.querySelectorAll('#tournament-upcoming-tabs .filter-tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
     showUpcoming = btn.dataset.upcoming === 'true';
+    pageNum = 1;
     renderTournamentList();
   });
 
@@ -63,7 +76,7 @@ export async function renderTournaments(container) {
   }
 }
 
-function renderTournamentList(searchQuery = '') {
+function renderTournamentList() {
   // Clear existing countdowns
   countdownIntervals.forEach(clearInterval);
   countdownIntervals = [];
@@ -91,12 +104,19 @@ function renderTournamentList(searchQuery = '') {
   const grid = document.getElementById('tournaments-grid');
   if (!grid) return;
 
+  const { items, ...pageInfo } = paginate(list, pageNum);
+  pageNum = pageInfo.page;
+  renderPagination(document.getElementById('tournaments-pagination'), pageInfo, p => {
+    pageNum = p;
+    renderTournamentList();
+  });
+
   if (list.length === 0) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📭</div><div class="empty-title">找不到賽事</div><div class="empty-desc">試試換個篩選條件</div></div>`;
     return;
   }
 
-  grid.innerHTML = list.map((t, i) => {
+  grid.innerHTML = items.map((t, i) => {
     const days = daysUntil(t.deadline);
     const dClass = deadlineClass(t.deadline);
     return `
@@ -124,8 +144,8 @@ function renderTournamentList(searchQuery = '') {
       </div>`;
   }).join('');
 
-  // Start countdowns for urgent deadlines
-  list.forEach((t, i) => {
+  // Start countdowns for urgent deadlines on this page
+  items.forEach((t, i) => {
     const days = daysUntil(t.deadline);
     if (days !== null && days > 0 && days <= 3) {
       const el = document.getElementById(`countdown-t-${i}`);

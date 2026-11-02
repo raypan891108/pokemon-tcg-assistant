@@ -1,11 +1,17 @@
 import { api } from '../api.js';
-import { formatDate, regionLabel, escHtml, debounce } from '../utils.js';
+import { formatDate, regionLabel, escHtml, debounce, paginate, renderPagination } from '../utils.js';
 
 let allProducts = [];
 let currentRegion = 'all';
 let searchQuery = '';
+let pageNum = 1;
 
 export async function renderProducts(container) {
+  // Start fresh each visit so the state matches the freshly rendered tabs and search box
+  currentRegion = 'all';
+  searchQuery = '';
+  pageNum = 1;
+
   container.innerHTML = `
     <div class="page-header">
       <div>
@@ -26,12 +32,14 @@ export async function renderProducts(container) {
       <div id="products-grid" class="items-grid">
         <div class="loading-spinner" style="grid-column:1/-1"><div class="spinner"></div><span>載入中...</span></div>
       </div>
+      <div id="products-pagination"></div>
     </div>`;
 
   // Bind events
   const searchInput = document.getElementById('product-search');
   searchInput.addEventListener('input', debounce(e => {
     searchQuery = e.target.value;
+    pageNum = 1;
     renderProductList();
   }, 300));
 
@@ -41,6 +49,7 @@ export async function renderProducts(container) {
     document.querySelectorAll('#region-tabs .filter-tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
     currentRegion = btn.dataset.region;
+    pageNum = 1;
     renderProductList();
   });
 
@@ -63,12 +72,19 @@ function renderProductList() {
   const grid = document.getElementById('products-grid');
   if (!grid) return;
 
+  const { items, ...pageInfo } = paginate(list, pageNum);
+  pageNum = pageInfo.page;
+  renderPagination(document.getElementById('products-pagination'), pageInfo, p => {
+    pageNum = p;
+    renderProductList();
+  });
+
   if (list.length === 0) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📭</div><div class="empty-title">找不到商品</div><div class="empty-desc">試試換個關鍵字或地區</div></div>`;
     return;
   }
 
-  grid.innerHTML = list.map((p, i) => `
+  grid.innerHTML = items.map((p, i) => `
     <div class="item-card" style="animation-delay:${Math.min(i * 0.04, 0.4)}s">
       ${p.imageUrl ? `<img src="${escHtml(p.imageUrl)}" alt="${escHtml(p.name)}" style="width:100%;height:160px;object-fit:cover;border-radius:8px;margin-bottom:4px;" onerror="this.style.display='none'" loading="lazy">` : ''}
       <div class="item-card-header">

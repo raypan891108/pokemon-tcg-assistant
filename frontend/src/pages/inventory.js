@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { escHtml, debounce, showToast, openModal, formatTwd } from '../utils.js';
+import { escHtml, debounce, showToast, openModal, formatTwd, paginate, renderPagination } from '../utils.js';
 
 const STATUS_LABELS = { in_stock: '庫存', listed: '上架中', sold: '已售出' };
 const LANGUAGES = ['日文', '中文', '英文', '韓文'];
@@ -10,8 +10,14 @@ let marketPrices = new Map();
 let feeRate = 0;
 let currentStatus = 'all';
 let searchQuery = '';
+let pageNum = 1;
 
 export async function renderInventory(container) {
+  // Start fresh each visit so the state matches the freshly rendered tabs and search box
+  currentStatus = 'all';
+  searchQuery = '';
+  pageNum = 1;
+
   container.innerHTML = `
     <div class="page-header">
       <div>
@@ -37,10 +43,12 @@ export async function renderInventory(container) {
       <div id="inventory-table">
         <div class="loading-spinner"><div class="spinner"></div><span>載入中...</span></div>
       </div>
+      <div id="inventory-pagination"></div>
     </div>`;
 
   document.getElementById('inventory-search').addEventListener('input', debounce(e => {
     searchQuery = e.target.value.trim().toLowerCase();
+    pageNum = 1;
     renderTable();
   }, 200));
 
@@ -50,6 +58,7 @@ export async function renderInventory(container) {
     document.querySelectorAll('#status-tabs .filter-tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
     currentStatus = btn.dataset.status;
+    pageNum = 1;
     renderTable();
   });
 
@@ -135,6 +144,14 @@ function renderTable() {
   if (!el) return;
   const list = filtered();
 
+  // Stays on the same page after an edit, sale or delete (clamped if that page is now gone)
+  const { items: pageItems, ...pageInfo } = paginate(list, pageNum);
+  pageNum = pageInfo.page;
+  renderPagination(document.getElementById('inventory-pagination'), pageInfo, p => {
+    pageNum = p;
+    renderTable();
+  });
+
   if (items.length === 0) {
     el.innerHTML = `<div class="empty-state"><div class="empty-icon">🗃️</div><div class="empty-title">倉庫還是空的</div><div class="empty-desc">點擊「＋ 新增卡片」記錄第一張要賣的卡</div></div>`;
     return;
@@ -163,7 +180,7 @@ function renderTable() {
           </tr>
         </thead>
         <tbody>
-          ${list.map(rowHtml).join('')}
+          ${pageItems.map(rowHtml).join('')}
         </tbody>
       </table>
     </div>`;
