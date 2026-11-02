@@ -4,15 +4,32 @@ const cheerio = require('cheerio');
 // Limitless TCG — tournament results and meta share for Pokemon TCG decks
 const BASE_URL = 'https://limitlesstcg.com';
 
-async function fetchPage(url) {
+// locale "jp_JP" makes Limitless show decklists with Japanese card names and Japanese prints
+async function fetchPage(url, locale = null) {
   const { data } = await axios.get(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
       'Accept-Language': 'en-US,en;q=0.9',
+      ...(locale ? { Cookie: `locale=${locale}` } : {}),
     },
     timeout: 15000,
   });
   return cheerio.load(data);
+}
+
+function parseDecklist($) {
+  const sections = [];
+  $('.decklist-column').each((_, col) => {
+    const heading = $(col).find('.decklist-column-heading').text().trim();
+    const cards = $(col).find('.decklist-card').map((_, card) => ({
+      count: Number($(card).find('.card-count').text().trim()) || 0,
+      name: $(card).find('.card-name').text().trim(),
+      set: $(card).attr('data-set') || '',
+      number: $(card).attr('data-number') || '',
+    })).get();
+    if (cards.length) sections.push({ heading, cards });
+  });
+  return sections;
 }
 
 // format: "standard-jp" (Japanese card pool, also used in Taiwan/Asia) or "standard" (international)
@@ -61,18 +78,21 @@ async function scrapeSampleList(deckId, format = 'standard-jp') {
   });
   if (!found) return null;
 
-  const $list = await fetchPage(found.listUrl);
-  const sections = [];
-  $list('.decklist-column').each((_, col) => {
-    const heading = $list(col).find('.decklist-column-heading').text().trim();
-    const cards = $list(col).find('.decklist-card').map((_, card) => ({
-      count: Number($list(card).find('.card-count').text().trim()) || 0,
-      name: $list(card).find('.card-name').text().trim(),
-      set: $list(card).attr('data-set') || '',
-      number: $list(card).attr('data-number') || '',
-    })).get();
-    if (cards.length) sections.push({ heading, cards });
-  });
+  const sections = parseDecklist(await fetchPage(found.listUrl));
+
+  // The same list in Japanese, card for card in the same order: adds the Japanese name and print
+  try {
+    const ja = parseDecklist(await fetchPage(found.listUrl, 'jp_JP'));
+    const sameShape = ja.length === sections.length && ja.every((s, i) => s.cards.length === sections[i].cards.length);
+    if (sameShape) {
+      sections.forEach((s, i) => s.cards.forEach((card, j) => {
+        const jaCard = ja[i].cards[j];
+        Object.assign(card, { nameJa: jaCard.name, jaSet: jaCard.set, jaNumber: jaCard.number });
+      }));
+    }
+  } catch (e) {
+    console.error('[Limitless] Japanese decklist error:', e.message);
+  }
   return { ...found, sections };
 }
 

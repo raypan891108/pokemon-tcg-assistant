@@ -92,4 +92,15 @@ function requireAuth(req, res, next) {
   res.status(401).json({ error: '請先登入' });
 }
 
-module.exports = { enabled, login, logout, status, requireAuth };
+// Phone calendars can't log in, so with a password set the calendar URL carries this token.
+// It's derived from the session secret, so changing the password changes the URL too.
+function calendarToken() {
+  return enabled() ? sign('calendar-feed').slice(0, 32) : null;
+}
+
+function hasCalendarAccess(req) {
+  if (!enabled()) return true;
+  return safeEqual(String(req.query.token || ''), calendarToken());
+}
+
+module.exports = { enabled, login, logout, status, requireAuth, calendarToken, hasCalendarAccess };

@@ -49,7 +49,7 @@ async function scrapeProducts() {
     console.error('[US Scraper] Products error:', e.message);
   }
 
-  return [...products, ...getSeedProducts()];
+  return products;
 }
 
 async function scrapeEvents() {
@@ -145,33 +145,6 @@ function parseDate(text) {
     }
   }
   return null;
-}
-
-function getSeedProducts() {
-  return [
-    {
-      id: 'us-seed-sv8',
-      name: 'Surging Sparks',
-      region: 'us',
-      type: '補充包',
-      imageUrl: null,
-      url: 'https://www.pokemon.com/us/pokemon-tcg/pokemon-cards/',
-      releaseDate: '2024-11-08',
-      description: 'Scarlet & Violet—Surging Sparks expansion',
-      source: 'seed',
-    },
-    {
-      id: 'us-seed-sv9',
-      name: 'Prismatic Evolutions',
-      region: 'us',
-      type: '特別組合',
-      imageUrl: null,
-      url: 'https://www.pokemon.com/us/pokemon-tcg/pokemon-cards/',
-      releaseDate: '2025-01-17',
-      description: 'Scarlet & Violet special set',
-      source: 'seed',
-    },
-  ];
 }
 
 module.exports = { scrapeProducts, scrapeEvents, scrapeTournaments };

@@ -34,7 +34,7 @@
   /* Text */
   --text-primary: #F0F0FF;
   --text-secondary: #A0A0C0;
-  --text-muted: #606080;
+  --text-muted: #8E8EB0;
   --text-gold: var(--gold);
 
   /* Gradients */
@@ -1341,3 +1341,51 @@ body {
   .page-numbers { display: none; }
   .pagination .page-btn { flex: 1; }
 }
+
+/* ═══ Price chart ═══ */
+
+.chart-wrap { position: relative; }
+.price-chart { width: 100%; height: auto; display: block; }
+.chart-grid { stroke: var(--border-light); stroke-width: 1; }
+.chart-baseline { stroke: var(--border); stroke-width: 1; }
+.chart-axis { fill: var(--text-muted); font-size: 11px; font-family: inherit; }
+.chart-threshold { stroke: var(--text-secondary); stroke-width: 1; stroke-dasharray: 4 4; }
+.chart-crosshair { stroke: var(--text-muted); stroke-width: 1; }
+.chart-hit { cursor: crosshair; }
+
+.chart-tooltip {
+  position: absolute;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--shadow-card);
+}
+
+.chart-empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+}
+
+.chart-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.alert-tag { font-size: 12px; color: var(--text-secondary); }
+.alert-tag.alert-hit { color: var(--gold); font-weight: 600; }
+
+.history-details { margin-top: 16px; }
+.history-details summary { cursor: pointer; font-size: 13px; color: var(--text-secondary); }

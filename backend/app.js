@@ -9,6 +9,7 @@ const inventory = require('./services/inventory');
 const market = require('./services/market');
 const decks = require('./services/decks');
 const backup = require('./services/backup');
+const calendar = require('./services/calendar');
 
 // The Express app; server.js starts it
 const app = express();
@@ -44,6 +45,17 @@ app.get('/api/health', (req, res) => {
 app.get('/api/auth/status', auth.status);
 app.post('/api/auth/login', auth.login);
 app.post('/api/auth/logout', auth.logout);
+
+// Calendar feed for phone calendars, which can't log in; with a password set the URL carries a token
+app.get('/api/calendar.ics', handle(async (req, res) => {
+  if (!auth.hasCalendarAccess(req)) {
+    res.status(401);
+    return { error: 'unauthorized' };
+  }
+  res.type('text/calendar; charset=utf-8');
+  res.setHeader('Content-Disposition', 'inline; filename="pokemon-tcg.ics"');
+  res.send(await calendar.buildCalendar());
+}));
 
 // ─── API Routes (login required when APP_PASSWORD is set) ────
 
@@ -128,12 +140,22 @@ app.delete('/api/market/watchlist/:id', handle(async (req, res) => {
   return { success: ok };
 }));
 
+app.put('/api/market/watchlist/:id/alerts', handle(async (req, res) => {
+  return await market.setAlerts(req.params.id, req.body) || notFound(res, '找不到這張追蹤的卡');
+}));
+
 app.post('/api/market/refresh', handle(() => market.refreshWatchlist()));
 
 // Deck recommendations (Limitless meta)
 app.get('/api/decks', handle(req => decks.getMeta(req.query.format, req.query.refresh === 'true')));
 
 app.get('/api/decks/:id/list', handle(req => decks.getSampleList(req.params.id, req.query.format)));
+
+// Subscription path for the settings page (includes the token when a password is set)
+app.get('/api/calendar/info', handle(() => {
+  const token = auth.calendarToken();
+  return { path: `/api/calendar.ics${token ? `?token=${token}` : ''}` };
+}));
 
 // Backups of your own records
 app.get('/api/backup', handle(() => backup.getStatus()));

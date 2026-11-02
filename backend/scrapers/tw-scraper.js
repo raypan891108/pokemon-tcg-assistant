@@ -71,24 +71,60 @@ async function scrapeProducts() {
   } catch (e) {
     console.error('[TW Scraper] Products error:', e.message);
   }
+
+  // The products page has no release dates; product news titles often do, e.g.
+  // 擴充包「綠寶石風暴」將於8月7日（五）發售！ — match on the 「」 name including the brackets,
+  // so 「30th CELEBRATION」 doesn't also date "30th CELEBRATION頂級牌組組合"
+  try {
+    const dates = [];
+    for (const { name, thumb } of await scrapeHomeNews('Product', { uniqueByUrl: false })) {
+      const quoted = name.match(/「[^」]+」/);
+      const releaseDate = parseReleaseDate(name, thumb);
+      if (quoted && releaseDate) dates.push({ key: quoted[0].replace(/\s+/g, ''), releaseDate });
+    }
+    for (const p of products) {
+      const match = dates.find(d => p.name.replace(/\s+/g, '').includes(d.key));
+      if (match && !p.releaseDate) p.releaseDate = match.releaseDate;
+    }
+  } catch (e) {
+    console.error('[TW Scraper] Product news error:', e.message);
+  }
   return products;
 }
 
+// "將於8月7日（五）發售" / "9月16日（三）發行" with the year from the title, or else from
+// the thumbnail's upload folder (…/2026/06/…); a month well before that means next year
+function parseReleaseDate(title, thumb) {
+  const m = title.match(/(?:(\d{4})年)?(\d{1,2})月(\d{1,2})日[^！!]*?(?:發售|發行|上市)/);
+  if (!m) return null;
+  let year = m[1] ? Number(m[1]) : null;
+  if (!year) {
+    const uploaded = (thumb || '').match(/\/(\d{4})\/(\d{2})\//);
+    if (!uploaded) return null;
+    year = Number(uploaded[1]) + (Number(m[2]) < Number(uploaded[2]) - 2 ? 1 : 0);
+  }
+  return `${year}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+}
+
 // Homepage news list: each <a.info-column-item> has a title and an Event/Product/Other label.
-// The same URL can appear more than once, so dedupe by URL.
-async function scrapeEventNews() {
+// The same URL can appear more than once with different titles (e.g. "最新消息" and "將於…發售"):
+// events keep the first one per URL (their ids come from the URL); uniqueByUrl=false keeps all.
+async function scrapeHomeNews(wanted, { uniqueByUrl = true } = {}) {
   const $ = await fetchPage(HOME_URL);
   const items = [];
   const seen = new Set();
   $('a.info-column-item').each((_, el) => {
     const category = $(el).find('.info-column-item-category .category').text().trim();
     const url = $(el).attr('href');
-    if (category !== 'Event' || !url || seen.has(url)) return;
-    seen.add(url);
-
     // Titles sometimes carry zero-width spaces
     const name = $(el).find('.info-column-item-title').text().replace(/[​\s]+/g, ' ').trim();
-    if (name) items.push({ name, url: absoluteUrl(url) });
+    const key = uniqueByUrl ? url : `${url}|${name}`;
+    if (category !== wanted || !url || seen.has(key)) return;
+    seen.add(key);
+
+    // Thumbnails live under /wp-content/uploads/.../YYYY/MM/, which dates the post
+    const thumb = $(el).find('img').attr('src') || '';
+    if (name) items.push({ name, url: absoluteUrl(url), thumb });
   });
   return items;
 }
@@ -100,7 +136,7 @@ function isTournament(name) {
 async function scrapeEvents() {
   const events = [];
   try {
-    for (const { name, url } of await scrapeEventNews()) {
+    for (const { name, url } of await scrapeHomeNews('Event')) {
       if (isTournament(name)) continue;
       events.push({
         id: generateId(url + 'tw-event', REGION),
@@ -180,7 +216,7 @@ async function scrapeTournaments() {
     console.error('[TW Scraper] Tournament entry API error:', e.message);
   }
   try {
-    for (const { name, url } of await scrapeEventNews()) {
+    for (const { name, url } of await scrapeHomeNews('Event')) {
       if (!isTournament(name)) continue;
       // League announcements on the portal are covered by the entry API; videos aren't tournaments
       if (/portal-pokemon\.com|youtu\.?be/.test(url)) continue;

@@ -72,8 +72,8 @@ function renderStats(stats, products) {
       <div class="stat-card" onclick="navigate('tournaments')">
         <div class="stat-icon">🏆</div>
         <div class="stat-value">${stats.upcomingTournaments || 0}</div>
-        <div class="stat-label">即將開賽</div>
-        <div class="stat-sub">共 ${stats.totalTournaments || 0} 個賽事</div>
+        <div class="stat-label">即將舉辦</div>
+        <div class="stat-sub">${stats.openForEntry || 0} 場開放報名中</div>
       </div>
       <div class="stat-card" onclick="navigate('market')">
         <div class="stat-icon">💹</div>

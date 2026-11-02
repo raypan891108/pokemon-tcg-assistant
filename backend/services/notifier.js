@@ -169,6 +169,88 @@ async function notifyDeadlineReminders() {
   await storage.saveReminders(active);
 }
 
+// Today's date and hour in Taiwan, whatever the machine's time zone
+function taipeiNow() {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date()).map(p => [p.type, p.value]));
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, hour: Number(parts.hour) };
+}
+
+const REGION_NAMES = { tw: '🇹🇼 台灣', jp: '🇯🇵 日本', us: '🇺🇸 美國' };
+
+// Each product is reminded at most twice: once within N days of its release ("soon") and on
+// release day ("day"). Only sent 08:00–22:00 Taiwan time, recorded once Discord accepts them.
+async function notifyReleaseReminders() {
+  const settings = await storage.getSettings();
+  if (!settings.notifyNewProducts || !settings.discordWebhook) return;
+
+  const { date: today, hour } = taipeiNow();
+  const [products, sent] = await Promise.all([storage.getProducts(), storage.getReleaseReminders()]);
+  // Forget products already released
+  const active = Object.fromEntries(Object.entries(sent).filter(([key]) => key.split('|').pop() >= today));
+  if (hour < 8 || hour >= 22) {
+    if (Object.keys(active).length !== Object.keys(sent).length) await storage.saveReleaseReminders(active);
+    return;
+  }
+
+  const daysBefore = settings.notifyDaysBeforeRelease || 3;
+  const due = [];
+  for (const p of products) {
+    if (!p.releaseDate) continue;
+    const daysLeft = Math.round((Date.parse(p.releaseDate) - Date.parse(today)) / DAY_MS);
+    if (daysLeft < 0 || daysLeft > daysBefore) continue;
+    const key = `${p.id}|${p.releaseDate}`;
+    const stage = daysLeft === 0 ? 'day' : 'soon';
+    const record = active[key] || {};
+    if (record[stage] || (stage === 'soon' && record.day)) continue;
+    due.push({ p, key, stage, daysLeft });
+  }
+
+  for (let i = 0; i < due.length; i += MAX_EMBEDS) {
+    const batch = due.slice(i, i + MAX_EMBEDS);
+    const embeds = batch.map(({ p, stage, daysLeft }) => ({
+      title: `📦 ${p.name}`,
+      description: stage === 'day' ? '**今天發售！**' : `還有 **${daysLeft} 天**發售（${p.releaseDate}）`,
+      color: stage === 'day' ? 0x4ADE80 : 0xFFCC00,
+      fields: [
+        { name: '地區', value: REGION_NAMES[p.region] || p.region, inline: true },
+        { name: '類型', value: p.type || '—', inline: true },
+        ...(p.description ? [{ name: '價格', value: p.description, inline: true }] : []),
+      ],
+      thumbnail: p.imageUrl ? { url: p.imageUrl } : undefined,
+      url: p.url || undefined,
+      footer: { text: 'Pokemon TCG 助手 · 發售提醒' },
+      timestamp: new Date().toISOString(),
+    }));
+    const ok = await sendDiscordNotification(i === 0 ? `🛒 **${due.length} 個新商品即將發售！**` : '', embeds);
+    if (!ok) break;
+    const at = new Date().toISOString();
+    for (const { key, stage } of batch) active[key] = { ...active[key], [stage]: at };
+  }
+
+  await storage.saveReleaseReminders(active);
+}
+
+// alerts: [{ item, direction: 'below' | 'above', threshold, priceTwd, priceJpy }]
+async function notifyPriceAlerts(alerts) {
+  if (!alerts?.length) return;
+  for (let i = 0; i < alerts.length; i += MAX_EMBEDS) {
+    const embeds = alerts.slice(i, i + MAX_EMBEDS).map(({ item, direction, threshold, priceTwd, priceJpy }) => ({
+      title: `${direction === 'below' ? '⬇️' : '⬆️'} ${item.name} ${item.cardNumber || ''}`.trim(),
+      description: `遊々亭價格 **NT$${priceTwd.toLocaleString()}**（${priceJpy.toLocaleString()} 円），`
+        + `已${direction === 'below' ? '低於' : '高於'}你設定的 NT$${threshold.toLocaleString()}`,
+      color: direction === 'below' ? 0x4ADE80 : 0xFF8C00,
+      url: item.url || undefined,
+      thumbnail: item.imageUrl ? { url: item.imageUrl } : undefined,
+      footer: { text: 'Pokemon TCG 助手 · 卡價提醒' },
+      timestamp: new Date().toISOString(),
+    }));
+    const ok = await sendDiscordNotification(i === 0 ? `💹 **${alerts.length} 張卡達到你設定的價格！**` : '', embeds);
+    if (!ok) return;
+  }
+}
+
 async function sendTestNotification() {
   return await sendDiscordNotification(
     '✅ **Pokemon TCG 助手通知測試成功！**\n您的 Discord Webhook 設定正確，將會收到即時的 TCG 資訊更新。',
@@ -193,5 +275,7 @@ module.exports = {
   notifyNewEvents,
   notifyNewTournaments,
   notifyDeadlineReminders,
+  notifyPriceAlerts,
+  notifyReleaseReminders,
   sendTestNotification,
 };

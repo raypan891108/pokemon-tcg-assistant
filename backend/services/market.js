@@ -1,6 +1,7 @@
 const axios = require('axios');
 const storage = require('./storage');
 const yuyutei = require('../scrapers/yuyutei-scraper');
+const notifier = require('./notifier');
 
 const MAX_HISTORY = 200;
 const RATE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -87,17 +88,64 @@ async function removeFromWatchlist(id) {
   return true;
 }
 
+// Price alerts (NT$): fire once when the price crosses a threshold, re-arm once it crosses back.
+// alertState remembers which side of each threshold the last price was on.
+function evaluateAlerts(item, priceTwd) {
+  const state = { ...(item.alertState || {}) };
+  const fired = [];
+  const rules = [
+    ['below', item.alertBelowTwd, priceTwd <= item.alertBelowTwd],
+    ['above', item.alertAboveTwd, priceTwd >= item.alertAboveTwd],
+  ];
+  for (const [direction, threshold, hit] of rules) {
+    if (threshold == null) {
+      delete state[direction];
+      continue;
+    }
+    if (hit && !state[direction]) fired.push({ direction, threshold });
+    state[direction] = hit;
+  }
+  return { state, fired };
+}
+
+// Set or clear (blank) the alert prices for a watched card; checked on the next price refresh
+async function setAlerts(id, input) {
+  const parse = (v) => {
+    if (v === '' || v == null) return null;
+    const n = Number(v);
+    if (!Number.isFinite(n) || n <= 0) throw new Error('提醒價格需為大於 0 的數字');
+    return Math.round(n);
+  };
+  const below = parse(input.alertBelowTwd);
+  const above = parse(input.alertAboveTwd);
+  if (below != null && above != null && below >= above) throw new Error('「低於」的價格要比「高於」小');
+
+  const items = await storage.getWatchlist();
+  const idx = items.findIndex(i => i.id === id);
+  if (idx === -1) return null;
+  items[idx] = { ...items[idx], alertBelowTwd: below, alertAboveTwd: above, alertState: {} };
+  await storage.saveWatchlist(items);
+  return withTwd(items[idx], await getJpyToTwd());
+}
+
 // Re-fetch watched cards' pages one at a time to stay polite to the shop
 async function refreshWatchlist() {
-  const items = await storage.getWatchlist();
+  const [items, rate] = await Promise.all([storage.getWatchlist(), getJpyToTwd()]);
   const refreshed = new Map();
+  const alerts = [];
   const errors = [];
 
   for (const item of items) {
     try {
       const { priceJpy, stock } = await yuyutei.fetchCardPrice(item.url);
       if (priceJpy != null) {
-        refreshed.set(item.id, [...(item.history || []), { at: new Date().toISOString(), priceJpy, stock }].slice(-MAX_HISTORY));
+        const priceTwd = toTwd(priceJpy, rate);
+        const { state, fired } = evaluateAlerts(item, priceTwd);
+        alerts.push(...fired.map(f => ({ ...f, item, priceJpy, priceTwd })));
+        refreshed.set(item.id, {
+          history: [...(item.history || []), { at: new Date().toISOString(), priceJpy, stock }].slice(-MAX_HISTORY),
+          alertState: state,
+        });
       }
     } catch (e) {
       errors.push(`${item.name}: ${e.message}`);
@@ -108,9 +156,10 @@ async function refreshWatchlist() {
   // Re-read so cards added or removed during the refresh aren't lost or revived
   if (refreshed.size) {
     const latest = await storage.getWatchlist();
-    await storage.saveWatchlist(latest.map(i => (refreshed.has(i.id) ? { ...i, history: refreshed.get(i.id) } : i)));
+    await storage.saveWatchlist(latest.map(i => (refreshed.has(i.id) ? { ...i, ...refreshed.get(i.id) } : i)));
   }
-  return { updated: refreshed.size, errors };
+  if (alerts.length) await notifier.notifyPriceAlerts(alerts);
+  return { updated: refreshed.size, errors, alerts: alerts.length };
 }
 
-module.exports = { getJpyToTwd, search, getWatchlist, addToWatchlist, removeFromWatchlist, refreshWatchlist };
+module.exports = { getJpyToTwd, search, getWatchlist, addToWatchlist, removeFromWatchlist, refreshWatchlist, setAlerts, evaluateAlerts };

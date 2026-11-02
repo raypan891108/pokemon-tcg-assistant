@@ -1,5 +1,6 @@
 import { api } from '../api.js';
-import { escHtml, showToast, formatTwd, paginate, renderPagination, cardMeta } from '../utils.js';
+import { escHtml, showToast, formatTwd, paginate, renderPagination, cardMeta, openModal } from '../utils.js';
+import { renderPriceChart } from '../price-chart.js';
 
 let searchResults = [];
 let watchlist = { rate: 0, items: [] };
@@ -58,6 +59,12 @@ export async function renderMarket(container) {
   });
 
   document.getElementById('watchlist').addEventListener('click', async e => {
+    const chartBtn = e.target.closest('[data-chart]');
+    if (chartBtn) {
+      const item = watchlist.items.find(i => i.id === chartBtn.dataset.chart);
+      if (item) openChart(item);
+      return;
+    }
     const btn = e.target.closest('[data-unwatch]');
     if (!btn) return;
     try {
@@ -167,17 +174,111 @@ function renderWatchlist() {
             return `
               <tr>
                 <td>${i.imageUrl ? `<img src="${escHtml(i.imageUrl)}" alt="" class="price-card-img" loading="lazy">` : ''}</td>
-                <td class="wrap"><a href="${escHtml(i.url)}" target="_blank" rel="noopener" style="color:inherit"><strong>${escHtml(i.name)}</strong></a><br><span class="text-muted text-sm">${cardMeta(i)}</span></td>
+                <td class="wrap"><a href="${escHtml(i.url)}" target="_blank" rel="noopener" style="color:inherit"><strong>${escHtml(i.name)}</strong></a><br><span class="text-muted text-sm">${cardMeta(i)}</span>${alertTag(i)}</td>
                 <td class="num"><span class="price-value">${formatTwd(i.priceTwd)}</span></td>
                 <td class="num">${i.priceJpy != null ? i.priceJpy.toLocaleString() + ' 円' : '—'}</td>
                 <td class="num">${change == null ? '<span class="text-muted">—</span>' : change > 0 ? `<span class="price-change-up">▲ ${change.toFixed(1)}%</span>` : `<span class="price-change-down">▼ ${Math.abs(change).toFixed(1)}%</span>`}</td>
                 <td class="num">${i.stock ?? '—'}</td>
                 <td><span class="text-muted text-sm">${i.updatedAt ? new Date(i.updatedAt).toLocaleString('zh-TW') : '—'}</span></td>
-                <td><button class="btn-secondary btn-sm" data-unwatch="${escHtml(i.id)}">移除</button></td>
+                <td>
+                  <div class="row-actions">
+                    <button class="btn-secondary btn-sm" data-chart="${escHtml(i.id)}">📈 走勢</button>
+                    <button class="btn-secondary btn-sm" data-unwatch="${escHtml(i.id)}">移除</button>
+                  </div>
+                </td>
               </tr>`;
           }).join('')}
         </tbody>
       </table>
     </div>
     <p class="form-hint" style="margin-top:10px">匯率 1 円 ≈ NT$${rate.toFixed(4)} · 每次排程更新時自動記錄價格 · 價格僅供參考，實際以各平台成交為準</p>`;
+}
+
+// 🔔 line under the card name: the alert prices, highlighted once the price has crossed one
+function alertTag(i) {
+  const parts = [];
+  const state = i.alertState || {};
+  if (i.alertBelowTwd != null) parts.push(`${state.below ? '已' : ''}低於 ${formatTwd(i.alertBelowTwd)}`);
+  if (i.alertAboveTwd != null) parts.push(`${state.above ? '已' : ''}高於 ${formatTwd(i.alertAboveTwd)}`);
+  if (!parts.length) return '';
+  const hit = state.below || state.above;
+  return `<br><span class="alert-tag ${hit ? 'alert-hit' : ''}">🔔 ${parts.join(' · ')}</span>`;
+}
+
+async function openChart(item) {
+  const webhookSet = await api.settings().then(s => !!s.discordWebhook).catch(() => true);
+  const { rate } = watchlist;
+  const prices = (item.history || []).map(h => h.priceJpy).filter(v => v != null);
+  const twd = (jpy) => Math.round(jpy * rate);
+  const recent = [...(item.history || [])].reverse().slice(0, 30);
+
+  const { el, close } = openModal(`
+    <div class="modal-title">📈 ${escHtml(item.name)} <span class="text-muted text-sm">${cardMeta(item)}</span></div>
+    ${prices.length ? `
+      <div class="chart-stats">
+        <span>目前 <strong>${formatTwd(item.priceTwd)}</strong></span>
+        <span>最低 ${formatTwd(twd(Math.min(...prices)))}</span>
+        <span>最高 ${formatTwd(twd(Math.max(...prices)))}</span>
+        <span class="text-muted">${prices.length} 筆紀錄</span>
+      </div>` : ''}
+    <div id="price-chart"></div>
+    <p class="form-hint" style="margin-top:6px">台幣以目前匯率換算（1 円 ≈ NT$${rate.toFixed(4)}）</p>
+
+    <div class="settings-title" style="margin:20px 0 12px">🔔 價格提醒</div>
+    <form id="alert-form" class="form-grid">
+      <div class="form-group">
+        <label class="form-label" for="a-below">低於多少時通知（NT$）</label>
+        <input id="a-below" name="alertBelowTwd" type="number" min="1" class="form-input" placeholder="例如 1000" value="${item.alertBelowTwd ?? ''}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="a-above">高於多少時通知（NT$）</label>
+        <input id="a-above" name="alertAboveTwd" type="number" min="1" class="form-input" placeholder="例如 3000" value="${item.alertAboveTwd ?? ''}" />
+      </div>
+    </form>
+    <div class="form-hint" style="margin-top:8px">每小時更新價格時檢查，價格跨過設定值時用 Discord 通知一次。留空表示不提醒。</div>
+    ${webhookSet ? '' : '<div class="form-hint" style="margin-top:4px;color:var(--gold)">⚠️ 還沒設定 Discord Webhook，到「設定」頁填寫後才收得到通知</div>'}
+    <div class="form-error" id="alert-error"></div>
+
+    ${recent.length ? `
+      <details class="history-details">
+        <summary>價格紀錄（最近 ${recent.length} 筆）</summary>
+        <div class="table-wrap" style="margin-top:10px">
+          <table class="price-table">
+            <thead><tr><th>時間</th><th class="num">台幣</th><th class="num">日幣</th><th class="num">在庫</th></tr></thead>
+            <tbody>${recent.map(h => `
+              <tr>
+                <td class="text-sm">${new Date(h.at).toLocaleString('zh-TW')}</td>
+                <td class="num">${formatTwd(twd(h.priceJpy))}</td>
+                <td class="num">${h.priceJpy.toLocaleString()} 円</td>
+                <td class="num">${h.stock ?? '—'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </details>` : ''}
+
+    <div class="modal-actions">
+      <button class="btn-secondary" type="button" data-close>關閉</button>
+      <button class="btn-primary" type="submit" form="alert-form" id="btn-save-alert">💾 儲存提醒</button>
+    </div>`);
+
+  renderPriceChart(el.querySelector('#price-chart'), item.history || [], rate, {
+    below: item.alertBelowTwd ?? null,
+    above: item.alertAboveTwd ?? null,
+  });
+
+  el.querySelector('#alert-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = el.querySelector('#btn-save-alert');
+    btn.disabled = true;
+    try {
+      await api.setWatchAlerts(item.id, Object.fromEntries(new FormData(e.target).entries()));
+      close();
+      showToast('已儲存價格提醒', 'success');
+      await loadWatchlist();
+    } catch (err) {
+      el.querySelector('#alert-error').textContent = err.message;
+      btn.disabled = false;
+    }
+  });
 }

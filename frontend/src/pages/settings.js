@@ -49,7 +49,7 @@ function renderSettingsForm(settings) {
       <div class="toggle-row">
         <div class="toggle-info">
           <div class="toggle-label">新商品發售通知</div>
-          <div class="toggle-desc">當有新的補充包、構築組等商品時通知</div>
+          <div class="toggle-desc">有新的補充包、構築組等商品時通知，並在發售前提醒</div>
         </div>
         <label class="toggle">
           <input type="checkbox" id="toggle-products" ${settings.notifyNewProducts ? 'checked' : ''}>
@@ -127,6 +127,12 @@ function renderSettingsForm(settings) {
         <input type="number" id="deadline-days" class="form-input" min="1" max="14"
           value="${settings.notifyDaysBeforeDeadline || 3}" style="max-width:120px">
       </div>
+      <div class="form-group">
+        <label class="form-label" for="release-days">新商品發售前幾天提醒</label>
+        <input type="number" id="release-days" class="form-input" min="1" max="14"
+          value="${settings.notifyDaysBeforeRelease || 3}" style="max-width:120px">
+        <div class="form-hint">發售前和發售當天各用 Discord 提醒一次（只在早上 8 點到晚上 10 點之間發送）</div>
+      </div>
       <button class="btn-primary" id="btn-save-all" style="max-width:200px">💾 儲存所有設定</button>
     </div>
 
@@ -146,6 +152,13 @@ function renderSettingsForm(settings) {
         <div class="form-hint">平常會自動抓即時匯率，抓不到時才用這個數字</div>
       </div>
       <button class="btn-primary" id="btn-save-seller" style="max-width:200px">💾 儲存賣場設定</button>
+    </div>
+
+    <!-- Calendar subscription -->
+    <div class="settings-section">
+      <div class="settings-title">📅 行事曆訂閱</div>
+      <div class="form-hint" style="margin-bottom:12px">把比賽日期、報名截止時間和新商品發售日加到手機的「行事曆」App，資料每小時自動更新，截止和發售前會跳出提醒</div>
+      <div id="calendar-section" class="text-sm">載入中...</div>
     </div>
 
     <!-- Backups -->
@@ -196,6 +209,31 @@ function renderSettingsForm(settings) {
       btn.disabled = false;
       btn.textContent = '🔔 測試通知';
     }
+  });
+
+  api.calendarInfo().then(({ path }) => {
+    const el = document.getElementById('calendar-section');
+    const url = `${window.location.origin}${path}`;
+    // A phone can't reach this Mac's own address; it needs the Tailscale URL
+    const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+    el.innerHTML = `
+      ${local ? '<div class="form-hint" style="margin-bottom:10px;color:var(--gold)">⚠️ 你現在是用 Mac 本機網址開啟，手機連不到。請用手機打開網站的 Tailscale 網址，再到這裡按「加入 iPhone 行事曆」。</div>' : ''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <a class="btn-primary" style="flex:none" href="${escHtml(url.replace(/^https?:/, 'webcal:'))}">📲 加入 iPhone 行事曆</a>
+        <button class="btn-secondary" type="button" id="btn-copy-calendar">📋 複製訂閱網址</button>
+        <a class="btn-secondary" href="${escHtml(path)}" download="pokemon-tcg.ics">⬇ 下載 .ics</a>
+      </div>
+      <div class="form-hint">按「加入 iPhone 行事曆」後選「訂閱」。手機上的 Tailscale 要保持連線，行事曆才會更新。Google 日曆可用「複製訂閱網址」→「透過網址新增日曆」，但 Google 的伺服器連不到 Tailscale 網址，所以只適用 iPhone／Mac 的行事曆。</div>`;
+    el.querySelector('#btn-copy-calendar').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        showToast('已複製訂閱網址', 'success');
+      } catch {
+        window.prompt('複製這個網址：', url);
+      }
+    });
+  }).catch(e => {
+    document.getElementById('calendar-section').textContent = `無法讀取行事曆網址：${e.message}`;
   });
 
   const showBackupStatus = async () => {
@@ -256,6 +294,7 @@ function renderSettingsForm(settings) {
       regions,
       fetchIntervalHours: parseInt(document.getElementById('fetch-interval').value) || 1,
       notifyDaysBeforeDeadline: parseInt(document.getElementById('deadline-days').value) || 3,
+      notifyDaysBeforeRelease: parseInt(document.getElementById('release-days').value) || 3,
     });
   });
 }

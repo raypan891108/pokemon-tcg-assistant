@@ -126,8 +126,9 @@ async function updateBadges() {
     } else {
       badgeEvents.style.display = 'none';
     }
-    if (stats.upcomingTournaments > 0) {
-      badgeTournaments.textContent = stats.upcomingTournaments;
+    // Tournaments still taking registrations: the ones you might need to act on
+    if (stats.openForEntry > 0) {
+      badgeTournaments.textContent = stats.openForEntry;
       badgeTournaments.style.display = '';
     } else {
       badgeTournaments.style.display = 'none';

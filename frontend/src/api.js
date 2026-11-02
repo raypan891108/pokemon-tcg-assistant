@@ -42,6 +42,7 @@ export const api = {
   saveSettings: (s) => post('/settings', s),
   fetch: () => post('/fetch'),
   schedulerStatus: () => get('/scheduler/status'),
+  calendarInfo: () => get('/calendar/info'),
   backupStatus: () => get('/backup'),
   backupNow: () => post('/backup'),
   testNotify: () => post('/notify/test'),
@@ -60,6 +61,7 @@ export const api = {
   watchlist: () => get('/market/watchlist'),
   addWatch: (card) => post('/market/watchlist', card),
   removeWatch: (id) => del(`/market/watchlist/${encodeURIComponent(id)}`),
+  setWatchAlerts: (id, alerts) => put(`/market/watchlist/${encodeURIComponent(id)}/alerts`, alerts),
   refreshMarket: () => post('/market/refresh'),
 
   decks: (format, refresh) => get('/decks', { format, refresh }),

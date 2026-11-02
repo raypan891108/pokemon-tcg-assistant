@@ -14,6 +14,8 @@ const FILE_NAMES = {
   watchlist: 'watchlist.json',
   decks: 'decks.json',
   reminders: 'reminders.json',
+  releaseReminders: 'release_reminders.json',
+  cardNames: 'card_names.json',
 };
 
 // Default settings
@@ -24,6 +26,7 @@ const DEFAULT_SETTINGS = {
   notifyEvents: true,
   notifyTournaments: true,
   notifyDaysBeforeDeadline: 3,
+  notifyDaysBeforeRelease: 3,
   fetchIntervalHours: 1,
   // 卡拍拍 seller fee (%) applied to a sale when no fee is entered
   kapaipaiFeeRate: 0,
@@ -81,6 +84,12 @@ module.exports = {
   // Deadline reminders already sent: { "<tournament id>|<deadline>": { window, lastDay } }
   getReminders: () => read('reminders', {}),
   saveReminders: (data) => write('reminders', data),
+  // Release reminders already sent: { "<product id>|<release date>": { soon, day } }
+  getReleaseReminders: () => read('releaseReminders', {}),
+  saveReleaseReminders: (data) => write('releaseReminders', data),
+  // PokeAPI species list and translated names (see card-names.js)
+  getCardNames: () => read('cardNames', {}),
+  saveCardNames: (data) => write('cardNames', data),
   getSettings: async () => ({ ...DEFAULT_SETTINGS, ...await read('settings', {}) }),
   saveSettings: (settings) => write('settings', settings),
   getLastFetch: () => read('lastFetch', {}),
@@ -102,15 +111,15 @@ module.exports = {
       read('products', []), read('events', []), read('tournaments', []),
     ]);
     const now = new Date();
-    const upcoming = tournaments.filter(t => {
-      if (!t.deadline) return false;
-      return new Date(t.deadline) > now;
-    });
+    // Same rule as the tournaments page's 即將舉辦 filter: not yet held, or date unknown
+    const upcoming = tournaments.filter(t => !t.date || new Date(t.date) >= now);
+    const openForEntry = tournaments.filter(t => t.deadline && new Date(t.deadline) > now);
     return {
       totalProducts: products.length,
       totalEvents: events.length,
       totalTournaments: tournaments.length,
       upcomingTournaments: upcoming.length,
+      openForEntry: openForEntry.length,
       newProducts: products.filter(p => {
         const added = new Date(p.addedAt || p.releaseDate);
         return (now - added) < 7 * 24 * 60 * 60 * 1000;

@@ -91,6 +91,7 @@ async function runFetch() {
   await notifier.notifyNewEvents(newEvents);
   await notifier.notifyNewTournaments(newTournaments);
   await notifier.notifyDeadlineReminders();
+  await notifier.notifyReleaseReminders();
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log(`[Scheduler] Fetch complete in ${elapsed}s — Products: ${newProducts.length} new, Events: ${newEvents.length} new, Tournaments: ${newTournaments.length} new`);

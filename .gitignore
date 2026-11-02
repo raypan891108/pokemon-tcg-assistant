@@ -17,3 +17,5 @@ backend/data/last_fetch.json
 backend/data/decks.json
 backend/data/prices.json
 backend/data/reminders.json
+backend/data/release_reminders.json
+backend/data/card_names.json
