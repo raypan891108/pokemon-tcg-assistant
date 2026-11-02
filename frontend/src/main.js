@@ -127,8 +127,52 @@ async function checkHealth() {
 // ─── Global navigate access ──────────────────────────────────
 window.navigate = navigate;
 
+// ─── Login ───────────────────────────────────────────────────
+function showLogin() {
+  if (document.getElementById('login-screen')) return;
+  const screen = document.createElement('div');
+  screen.id = 'login-screen';
+  screen.className = 'modal-backdrop';
+  screen.style.alignItems = 'center';
+  screen.style.background = 'var(--bg-primary)';
+  screen.innerHTML = `
+    <form class="modal" id="login-form" style="max-width:360px">
+      <div class="modal-title">🎴 TCG 助手登入</div>
+      <div class="form-group">
+        <label class="form-label" for="login-password">密碼</label>
+        <input type="password" id="login-password" class="form-input" autocomplete="current-password" required />
+      </div>
+      <div class="form-error" id="login-error"></div>
+      <button class="btn-primary" type="submit" style="width:100%;padding:10px">登入</button>
+    </form>`;
+  document.body.appendChild(screen);
+  screen.querySelector('#login-password').focus();
+
+  screen.querySelector('#login-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    try {
+      await api.login(screen.querySelector('#login-password').value);
+      window.location.reload();
+    } catch (err) {
+      screen.querySelector('#login-error').textContent = err.message;
+    }
+  });
+}
+
+window.addEventListener('auth-required', showLogin);
+
 // ─── Init ────────────────────────────────────────────────────
 (async () => {
+  try {
+    const { required, authenticated } = await api.authStatus();
+    if (required && !authenticated) {
+      showLogin();
+      return;
+    }
+  } catch {
+    // Backend unreachable — fall through and let the health check show it
+  }
+
   // Check backend connection
   await checkHealth();
 

@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = path.join(__dirname, '../data');
+// DATA_DIR lets a deployment keep data on a persistent disk outside the app
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
 const FILES = {
   products: path.join(DATA_DIR, 'products.json'),
   events: path.join(DATA_DIR, 'events.json'),

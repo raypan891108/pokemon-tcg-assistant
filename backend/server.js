@@ -1,6 +1,7 @@
 const express = require('express');
-const cors = require('cors');
+const fs = require('fs');
 const path = require('path');
+const auth = require('./services/auth');
 const storage = require('./services/storage');
 const scheduler = require('./services/scheduler');
 const notifier = require('./services/notifier');
@@ -9,12 +10,27 @@ const market = require('./services/market');
 const decks = require('./services/decks');
 
 const app = express();
-const PORT = 3001;
+const PORT = Number(process.env.PORT) || 3001;
+// Built frontend; in development Vite serves it instead and proxies /api here
+const FRONTEND_DIST = path.join(__dirname, '../frontend/dist');
 
-app.use(cors());
+// Behind a reverse proxy (Caddy) req.ip and req.secure come from X-Forwarded-* headers
+app.set('trust proxy', 'loopback, uniquelocal');
 app.use(express.json());
 
-// ─── API Routes ──────────────────────────────────────────────
+// ─── Public routes ───────────────────────────────────────────
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/api/auth/status', auth.status);
+app.post('/api/auth/login', auth.login);
+app.post('/api/auth/logout', auth.logout);
+
+// ─── API Routes (login required when APP_PASSWORD is set) ────
+
+app.use('/api', auth.requireAuth);
 
 // Stats
 app.get('/api/stats', (req, res) => {
@@ -146,15 +162,17 @@ app.post('/api/notify/test', async (req, res) => {
   res.json({ success });
 });
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+// ─── Frontend ────────────────────────────────────────────────
+if (fs.existsSync(FRONTEND_DIST)) {
+  app.use(express.static(FRONTEND_DIST));
+  app.get(/^(?!\/api\/).*/, (req, res) => res.sendFile(path.join(FRONTEND_DIST, 'index.html')));
+}
 
 // ─── Start Server ────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n🎴 Pokemon TCG 助手後端已啟動！`);
-  console.log(`📡 API: http://localhost:${PORT}/api/health\n`);
+  console.log(`📡 API: http://localhost:${PORT}/api/health`);
+  console.log(auth.enabled() ? '🔒 已啟用密碼登入\n' : '⚠️  未設定 APP_PASSWORD，任何人都能存取（僅適合本機使用）\n');
   scheduler.start();
 });
 

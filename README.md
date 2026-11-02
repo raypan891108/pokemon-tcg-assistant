@@ -45,6 +45,12 @@ npm run dev
 
 ---
 
+## 部署到雲端
+
+要讓手機或其他電腦也能使用，請參考 [DEPLOY.md](DEPLOY.md)，部署到 Google Cloud 免費主機（含密碼登入與 HTTPS）。
+
+---
+
 ## 設定 Discord 通知
 
 1. 在 Discord 頻道：**設定 → 整合 → Webhook → 新建 Webhook**

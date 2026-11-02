@@ -148,6 +148,12 @@ function renderSettingsForm(settings) {
       <button class="btn-primary" id="btn-save-seller" style="max-width:200px">💾 儲存賣場設定</button>
     </div>
 
+    <!-- Account (only when the server requires a password) -->
+    <div class="settings-section" id="account-section" hidden>
+      <div class="settings-title">🔒 帳號</div>
+      <button class="btn-secondary" id="btn-logout">登出</button>
+    </div>
+
     <!-- Info Box -->
     <div class="settings-section" style="border-color:rgba(255,215,0,0.2);background:rgba(255,215,0,0.04)">
       <div class="settings-title">💡 使用說明</div>
@@ -182,6 +188,15 @@ function renderSettingsForm(settings) {
       btn.disabled = false;
       btn.textContent = '🔔 測試通知';
     }
+  });
+
+  api.authStatus().then(({ required }) => {
+    document.getElementById('account-section').hidden = !required;
+  }).catch(() => {});
+
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    await api.logout();
+    window.location.reload();
   });
 
   document.getElementById('btn-save-seller').addEventListener('click', async () => {

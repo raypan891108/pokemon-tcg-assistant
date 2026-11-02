@@ -1,0 +1,32 @@
+# Runs on the VM from /opt/tcg/app/deploy. Data and settings live outside the
+# app folder (/opt/tcg), so redeploying never touches them.
+services:
+  app:
+    build: ..
+    env_file: /opt/tcg/.env
+    environment:
+      TZ: Asia/Taipei
+    volumes:
+      - /opt/tcg/data:/data
+    restart: unless-stopped
+
+  # Reverse proxy with automatic HTTPS certificates from Let's Encrypt
+  caddy:
+    image: caddy:2-alpine
+    # Filled in from /opt/tcg/.env via `docker compose --env-file`
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in /opt/tcg/.env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

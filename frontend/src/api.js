@@ -1,8 +1,13 @@
-const API = 'http://localhost:3001/api';
+// Same origin as the page: the backend serves the built frontend, and Vite proxies /api in development
+const API = '/api';
 
 // Surface the backend's { error } message when a request fails
 async function request(url, options) {
   const res = await fetch(url, options);
+  // Session expired or missing — send the user back to the login screen
+  if (res.status === 401 && !String(url).includes('/auth/')) {
+    window.dispatchEvent(new Event('auth-required'));
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `API error: ${res.status}`);
@@ -11,7 +16,7 @@ async function request(url, options) {
 }
 
 export async function get(endpoint, params = {}) {
-  const url = new URL(`${API}${endpoint}`);
+  const url = new URL(`${API}${endpoint}`, window.location.origin);
   Object.entries(params).forEach(([k, v]) => v !== undefined && url.searchParams.set(k, v));
   return request(url);
 }
@@ -38,6 +43,9 @@ export const api = {
   fetch: () => post('/fetch'),
   testNotify: () => post('/notify/test'),
   health: () => get('/health'),
+  authStatus: () => get('/auth/status'),
+  login: (password) => post('/auth/login', { password }),
+  logout: () => post('/auth/logout'),
 
   inventory: () => get('/inventory'),
   addInventory: (item) => post('/inventory', item),
