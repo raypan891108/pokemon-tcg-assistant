@@ -6,9 +6,6 @@ const twScraper = require('../scrapers/tw-scraper');
 const jpScraper = require('../scrapers/jp-scraper');
 const usScraper = require('../scrapers/us-scraper');
 
-// Serverless functions are cut off after 60s, so cap the watchlist refresh there
-const MARKET_BUDGET_MS = process.env.VERCEL ? 35000 : Infinity;
-
 const SCRAPERS = { tw: twScraper, jp: jpScraper, us: usScraper };
 
 let isRunning = false;
@@ -60,9 +57,8 @@ async function runFetch() {
 
   // Refresh 遊々亭 prices for watched cards
   try {
-    const { errors, skipped } = await market.refreshWatchlist({ deadline: startTime + MARKET_BUDGET_MS });
+    const { errors } = await market.refreshWatchlist();
     results.errors.push(...errors.map(e => `Market: ${e}`));
-    if (skipped) console.log(`[Scheduler] Market refresh ran out of time; ${skipped} card(s) left for next run`);
   } catch (e) {
     results.errors.push(`Market: ${e.message}`);
   }
@@ -89,7 +85,6 @@ async function runFetch() {
   };
 }
 
-// Long-running server only; on Vercel the cron endpoint calls fetchAll instead
 async function start() {
   const settings = await storage.getSettings();
   const hours = Math.min(Math.max(Number(settings.fetchIntervalHours) || 1, 1), 23);

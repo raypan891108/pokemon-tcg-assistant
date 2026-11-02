@@ -1,9 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-// Each document (products, inventory, settings, ...) is one JSON value.
-// Locally they are files in DATA_DIR; when SUPABASE_URL is set (e.g. on Vercel)
-// they are rows in a Supabase table, since serverless functions can't keep files.
+// Each document (products, inventory, settings, ...) is one JSON file in DATA_DIR
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
 const FILE_NAMES = {
@@ -32,64 +30,18 @@ const DEFAULT_SETTINGS = {
   jpyToTwd: 0.21,
 };
 
-// A missing document returns the default; any other failure throws, so a
+// A missing file returns the default; any other failure throws, so a
 // read-modify-write never overwrites real data after a failed read.
-const fileDriver = {
-  name: 'file',
-  async read(doc, defaultValue) {
-    const filePath = path.join(DATA_DIR, FILE_NAMES[doc]);
-    if (!fs.existsSync(filePath)) return defaultValue;
-    return JSON.parse(await fs.promises.readFile(filePath, 'utf-8'));
-  },
-  async write(doc, value) {
-    await fs.promises.mkdir(DATA_DIR, { recursive: true });
-    await fs.promises.writeFile(path.join(DATA_DIR, FILE_NAMES[doc]), JSON.stringify(value, null, 2), 'utf-8');
-  },
-};
-
-// Talks to Supabase's REST API (PostgREST) directly; table schema is in supabase/schema.sql
-function supabaseDriver(url, key, table) {
-  const base = `${url.replace(/\/$/, '')}/rest/v1/${table}`;
-  // New "sb_secret_..." keys go in the apikey header only; legacy service_role JWTs also as Bearer
-  const headers = {
-    apikey: key,
-    ...(key.startsWith('eyJ') ? { Authorization: `Bearer ${key}` } : {}),
-  };
-
-  async function request(urlPath, options = {}) {
-    const res = await fetch(`${base}${urlPath}`, {
-      ...options,
-      headers: { ...headers, ...options.headers },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!res.ok) throw new Error(`Supabase ${res.status}: ${(await res.text()).slice(0, 200)}`);
-    return res;
-  }
-
-  return {
-    name: 'supabase',
-    async read(doc, defaultValue) {
-      const res = await request(`?key=eq.${encodeURIComponent(doc)}&select=value`);
-      const rows = await res.json();
-      return rows.length ? rows[0].value : defaultValue;
-    },
-    async write(doc, value) {
-      await request('?on_conflict=key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
-        body: JSON.stringify([{ key: doc, value, updated_at: new Date().toISOString() }]),
-      });
-    },
-  };
+async function read(doc, defaultValue) {
+  const filePath = path.join(DATA_DIR, FILE_NAMES[doc]);
+  if (!fs.existsSync(filePath)) return defaultValue;
+  return JSON.parse(await fs.promises.readFile(filePath, 'utf-8'));
 }
 
-const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-const driver = process.env.SUPABASE_URL && SUPABASE_KEY
-  ? supabaseDriver(process.env.SUPABASE_URL, SUPABASE_KEY, process.env.SUPABASE_TABLE || 'tcg_store')
-  : fileDriver;
-
-const read = (doc, defaultValue) => driver.read(doc, defaultValue);
-const write = (doc, value) => driver.write(doc, value);
+async function write(doc, value) {
+  await fs.promises.mkdir(DATA_DIR, { recursive: true });
+  await fs.promises.writeFile(path.join(DATA_DIR, FILE_NAMES[doc]), JSON.stringify(value, null, 2), 'utf-8');
+}
 
 // Merge new items with existing, deduplicated by id
 function mergeItems(existing, newItems) {
@@ -114,11 +66,6 @@ async function mergeAndSave(doc, newItems) {
 }
 
 module.exports = {
-  driverName: driver.name,
-  fileDriver,
-  read,
-  write,
-
   getProducts: () => read('products', []),
   getEvents: () => read('events', []),
   getTournaments: () => read('tournaments', []),

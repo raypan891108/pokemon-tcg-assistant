@@ -9,13 +9,13 @@ const inventory = require('./services/inventory');
 const market = require('./services/market');
 const decks = require('./services/decks');
 
-// The Express app, shared by the long-running server (server.js) and the Vercel function (api/index.js)
+// The Express app; server.js starts it
 const app = express();
 // Built frontend; in development Vite serves it instead and proxies /api here
 const FRONTEND_DIST = path.join(__dirname, '../frontend/dist');
 
-// req.ip and req.secure come from X-Forwarded-* headers set by Vercel's edge or a local proxy
-app.set('trust proxy', process.env.VERCEL ? true : 'loopback, uniquelocal');
+// Behind `tailscale serve` (a proxy on this machine) req.ip and req.secure come from X-Forwarded-* headers
+app.set('trust proxy', 'loopback');
 app.use(express.json());
 
 // Route helper: async-safe, turns thrown errors into a JSON error response
@@ -37,21 +37,12 @@ const notFound = (res, message) => {
 // ─── Public routes ───────────────────────────────────────────
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', storage: storage.driverName, timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 app.get('/api/auth/status', auth.status);
 app.post('/api/auth/login', auth.login);
 app.post('/api/auth/logout', auth.logout);
-
-// Scheduled data fetch: Vercel Cron and Supabase pg_cron call this with CRON_SECRET
-app.get('/api/cron/fetch', handle((req, res) => {
-  if (!auth.hasCronSecret(req)) {
-    res.status(401);
-    return { error: 'unauthorized' };
-  }
-  return scheduler.fetchAll();
-}));
 
 // ─── API Routes (login required when APP_PASSWORD is set) ────
 
@@ -136,9 +127,7 @@ app.delete('/api/market/watchlist/:id', handle(async (req, res) => {
   return { success: ok };
 }));
 
-app.post('/api/market/refresh', handle(() => market.refreshWatchlist({
-  deadline: process.env.VERCEL ? Date.now() + 50000 : Infinity,
-})));
+app.post('/api/market/refresh', handle(() => market.refreshWatchlist()));
 
 // Deck recommendations (Limitless meta)
 app.get('/api/decks', handle(req => decks.getMeta(req.query.format, req.query.refresh === 'true')));
@@ -164,8 +153,7 @@ app.get('/api/scheduler/status', handle(() => scheduler.getStatus()));
 app.post('/api/notify/test', handle(async () => ({ success: await notifier.sendTestNotification() })));
 
 // ─── Frontend ────────────────────────────────────────────────
-// On Vercel the built frontend is served from the CDN instead
-if (!process.env.VERCEL && fs.existsSync(FRONTEND_DIST)) {
+if (fs.existsSync(FRONTEND_DIST)) {
   app.use(express.static(FRONTEND_DIST));
   app.get(/^(?!\/api\/).*/, (req, res) => res.sendFile(path.join(FRONTEND_DIST, 'index.html')));
 }

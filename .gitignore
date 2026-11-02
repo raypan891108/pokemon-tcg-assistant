@@ -5,11 +5,11 @@ frontend/dist/
 # Holds the Discord webhook URL — keep it out of version control
 backend/data/settings.json
 
-# Regenerated caches
+# Scraped data and caches, regenerated on every fetch.
+# inventory.json and watchlist.json are your own records and stay tracked.
+backend/data/products.json
+backend/data/events.json
+backend/data/tournaments.json
+backend/data/last_fetch.json
 backend/data/decks.json
 backend/data/prices.json
-
-# Vercel CLI link and pulled environment variables (contain secrets)
-.vercel/
-.env
-.env.*

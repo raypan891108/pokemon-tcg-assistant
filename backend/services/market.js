@@ -87,19 +87,13 @@ async function removeFromWatchlist(id) {
   return true;
 }
 
-// Re-fetch watched cards' pages one at a time to stay polite to the shop.
-// Stalest cards go first, and the loop stops at `deadline` so a serverless run
-// finishes in time; the rest are picked up on the next run.
-async function refreshWatchlist({ deadline = Infinity } = {}) {
+// Re-fetch watched cards' pages one at a time to stay polite to the shop
+async function refreshWatchlist() {
   const items = await storage.getWatchlist();
-  const queue = [...items].sort((a, b) => (lastEntry(a)?.at || '').localeCompare(lastEntry(b)?.at || ''));
   const refreshed = new Map();
   const errors = [];
-  let processed = 0;
 
-  for (const item of queue) {
-    if (Date.now() > deadline) break;
-    processed++;
+  for (const item of items) {
     try {
       const { priceJpy, stock } = await yuyutei.fetchCardPrice(item.url);
       if (priceJpy != null) {
@@ -116,7 +110,7 @@ async function refreshWatchlist({ deadline = Infinity } = {}) {
     const latest = await storage.getWatchlist();
     await storage.saveWatchlist(latest.map(i => (refreshed.has(i.id) ? { ...i, history: refreshed.get(i.id) } : i)));
   }
-  return { updated: refreshed.size, errors, skipped: queue.length - processed };
+  return { updated: refreshed.size, errors };
 }
 
 module.exports = { getJpyToTwd, search, getWatchlist, addToWatchlist, removeFromWatchlist, refreshWatchlist };
