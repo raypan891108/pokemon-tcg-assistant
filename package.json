@@ -1,0 +1,19 @@
+{
+  "name": "pokemon-tcg-assistant",
+  "version": "1.0.0",
+  "description": "Pokemon TCG 資訊助手 — 自動追蹤台灣、日本、美國的 TCG 活動、商品與賽事",
+  "scripts": {
+    "start": "npm run start --workspace=backend & npm run dev --workspace=frontend",
+    "backend": "npm run start --workspace=backend",
+    "frontend": "npm run dev --workspace=frontend",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\" --names \"後端,前端\" --prefix-colors \"yellow,cyan\"",
+    "install:all": "npm install --workspace=backend && npm install --workspace=frontend"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

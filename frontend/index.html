@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pokemon TCG 助手 — 活動、商品、賽事追蹤器</title>
+  <meta name="description" content="自動追蹤 Pokemon TCG 台灣、日本、美國三地最新商品、活動與比賽報名資訊的助手工具" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar -->
+    <nav id="sidebar" class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="20" cy="20" r="18" stroke="url(#grad1)" stroke-width="3"/>
+            <line x1="2" y1="20" x2="38" y2="20" stroke="url(#grad1)" stroke-width="3"/>
+            <circle cx="20" cy="20" r="6" fill="url(#grad1)"/>
+            <circle cx="20" cy="20" r="3" fill="#1a1a2e"/>
+            <defs>
+              <linearGradient id="grad1" x1="0" y1="0" x2="40" y2="40">
+                <stop offset="0%" stop-color="#FFD700"/>
+                <stop offset="100%" stop-color="#FF6B00"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <span class="logo-title">TCG 助手</span>
+          <span class="logo-sub">Pokemon Tracker</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-page="dashboard" id="nav-dashboard">
+          <span class="nav-icon">⬡</span>
+          <span class="nav-label">儀表板</span>
+        </a>
+        <a href="#" class="nav-item" data-page="products" id="nav-products">
+          <span class="nav-icon">📦</span>
+          <span class="nav-label">新商品</span>
+          <span class="nav-badge" id="badge-products"></span>
+        </a>
+        <a href="#" class="nav-item" data-page="events" id="nav-events">
+          <span class="nav-icon">🎉</span>
+          <span class="nav-label">活動</span>
+          <span class="nav-badge" id="badge-events"></span>
+        </a>
+        <a href="#" class="nav-item" data-page="tournaments" id="nav-tournaments">
+          <span class="nav-icon">🏆</span>
+          <span class="nav-label">比賽</span>
+          <span class="nav-badge" id="badge-tournaments"></span>
+        </a>
+        <a href="#" class="nav-item" data-page="market" id="nav-market">
+          <span class="nav-icon">💹</span>
+          <span class="nav-label">卡牌市場</span>
+        </a>
+        <a href="#" class="nav-item" data-page="inventory" id="nav-inventory">
+          <span class="nav-icon">🗃️</span>
+          <span class="nav-label">賣場倉庫</span>
+        </a>
+        <a href="#" class="nav-item" data-page="decks" id="nav-decks">
+          <span class="nav-icon">🃏</span>
+          <span class="nav-label">牌組推薦</span>
+        </a>
+        <a href="#" class="nav-item" data-page="settings" id="nav-settings">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-label">設定</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="fetch-status" id="fetch-status">
+          <span class="status-dot"></span>
+          <span class="status-text">已連線</span>
+        </div>
+        <button class="btn-refresh" id="btn-refresh" title="立即更新資料">
+          <span class="refresh-icon">↻</span>
+          立即更新
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+      <!-- Pages are injected here by JS -->
+    </main>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast-container"></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

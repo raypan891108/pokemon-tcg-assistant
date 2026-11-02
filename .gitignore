@@ -1,0 +1,9 @@
+node_modules/
+.DS_Store
+
+# Holds the Discord webhook URL — keep it out of version control
+backend/data/settings.json
+
+# Regenerated caches
+backend/data/decks.json
+backend/data/prices.json

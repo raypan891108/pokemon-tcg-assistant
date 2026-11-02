@@ -1,0 +1,93 @@
+[
+  {
+    "id": "tw-5f5dd8069be15abe",
+    "name": "2026-27 紀念球聯盟賽（候補名額） — 台北市南港區經貿二路2號 南港展覽館2館 1F / 4F",
+    "region": "tw",
+    "date": "2026-11-07T08:00:00+08:00",
+    "deadline": "2026-11-06T23:59:59+08:00",
+    "location": "115018 台北市南港區經貿二路2號 南港展覽館2館 1F / 4F",
+    "registrationUrl": "https://trainers-asia.portal-pokemon.com/tw/2026-27/premier-ball-league/",
+    "url": "https://trainers-asia.portal-pokemon.com/tw/2026-27/premier-ball-league/",
+    "description": "組別：孩童組、少年組、大師組　報名期間：2026-10-08 00:00:00 ～ 2026-11-06 23:59:59",
+    "source": "tw-pacs-api",
+    "addedAt": "2026-11-02T01:42:04.226Z"
+  },
+  {
+    "id": "tw-4b9884a7778b4099",
+    "name": "2026-27 高級球聯盟賽 賽季2 — 臺中國際會展中心 會議棟",
+    "region": "tw",
+    "date": "2026-12-19T08:30:00+08:00",
+    "deadline": "2026-11-02T12:00:00+08:00",
+    "location": "臺中國際會展中心 會議棟(臺中市西屯區港尾里黎明路三段1002號)",
+    "registrationUrl": "https://trainers-asia.portal-pokemon.com/tw/2026-27/ultra-ball-league/",
+    "url": "https://trainers-asia.portal-pokemon.com/tw/2026-27/ultra-ball-league/",
+    "description": "組別：孩童組、少年組、大師組　報名期間：2026-10-22 09:00:00 ～ 2026-11-02 12:00:00",
+    "source": "tw-pacs-api",
+    "addedAt": "2026-11-02T01:42:04.226Z"
+  },
+  {
+    "id": "tw-78b0b394ebc54403",
+    "name": "2026-27 高級球聯盟賽 賽季2 — 台北 世貿一館 C2區",
+    "region": "tw",
+    "date": "2027-01-09T08:30:00+08:00",
+    "deadline": "2026-11-02T12:00:00+08:00",
+    "location": "台北 世貿一館 C2區(臺北市信義區西村里信義路五段5號C2區)",
+    "registrationUrl": "https://trainers-asia.portal-pokemon.com/tw/2026-27/ultra-ball-league/",
+    "url": "https://trainers-asia.portal-pokemon.com/tw/2026-27/ultra-ball-league/",
+    "description": "組別：孩童組、少年組、大師組　報名期間：2026-10-22 09:00:00 ～ 2026-11-02 12:00:00",
+    "source": "tw-pacs-api",
+    "addedAt": "2026-11-02T01:42:04.226Z"
+  },
+  {
+    "id": "tw-d8ade8f3a83cb4d1",
+    "name": "2026-27 高級球聯盟賽 賽季2 — 桃園會展中心 7樓",
+    "region": "tw",
+    "date": "2027-02-20T08:30:00+08:00",
+    "deadline": "2027-01-11T12:00:00+08:00",
+    "location": "桃園會展中心 7樓(桃園市中壢區領航北路一段99號7樓)",
+    "registrationUrl": "https://trainers-asia.portal-pokemon.com/tw/2026-27/ultra-ball-league/",
+    "url": "https://trainers-asia.portal-pokemon.com/tw/2026-27/ultra-ball-league/",
+    "description": "組別：孩童組、少年組、大師組　報名期間：2026-10-22 09:00:00 ～ 2027-01-11 12:00:00",
+    "source": "tw-pacs-api",
+    "addedAt": "2026-11-02T01:42:04.226Z"
+  },
+  {
+    "id": "tw-1f3809ed405c946c",
+    "name": "2026-27 高級球聯盟賽 賽季2 — 高雄 新光三越 左營 10F",
+    "region": "tw",
+    "date": "2027-03-13T08:30:00+08:00",
+    "deadline": "2027-01-11T12:00:00+08:00",
+    "location": "高雄 新光三越 左營 10F(高雄市左營區菜公里高鐵路123號10F)",
+    "registrationUrl": "https://trainers-asia.portal-pokemon.com/tw/2026-27/ultra-ball-league/",
+    "url": "https://trainers-asia.portal-pokemon.com/tw/2026-27/ultra-ball-league/",
+    "description": "組別：孩童組、少年組、大師組　報名期間：2026-10-22 09:00:00 ～ 2027-01-11 12:00:00",
+    "source": "tw-pacs-api",
+    "addedAt": "2026-11-02T01:42:04.226Z"
+  },
+  {
+    "id": "tw-6b890407b134a5a2",
+    "name": "「寶可夢卡牌新光三越週年慶紀念賽」即將登場！",
+    "region": "tw",
+    "date": null,
+    "deadline": null,
+    "location": "台灣",
+    "registrationUrl": "https://asia.pokemon-card.com/tw/archives/13412/",
+    "url": "https://asia.pokemon-card.com/tw/archives/13412/",
+    "description": "",
+    "source": "tw-official",
+    "addedAt": "2026-11-02T01:42:04.226Z"
+  },
+  {
+    "id": "tw-8dda0f50af0606e3",
+    "name": "2025-26寶可夢亞洲錦標賽系列：聯盟賽點數達標玩家的特別獎品公告",
+    "region": "tw",
+    "date": null,
+    "deadline": null,
+    "location": "台灣",
+    "registrationUrl": "https://asia.pokemon-card.com/tw/archives/13057/",
+    "url": "https://asia.pokemon-card.com/tw/archives/13057/",
+    "description": "",
+    "source": "tw-official",
+    "addedAt": "2026-11-02T01:42:04.226Z"
+  }
+]
