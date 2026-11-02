@@ -194,3 +194,8 @@ export function renderPagination(el, { page, totalPages, total }, onChange) {
     window.scrollTo({ top: 0 });
   };
 }
+
+// "M6a · 158/103 · SAR", skipping parts a card doesn't have
+export function cardMeta(card) {
+  return [card.set, card.cardNumber, card.rarity].filter(Boolean).map(escHtml).join(' · ');
+}

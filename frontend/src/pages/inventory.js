@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { escHtml, debounce, showToast, openModal, formatTwd, paginate, renderPagination } from '../utils.js';
+import { escHtml, debounce, showToast, openModal, formatTwd, paginate, renderPagination, cardMeta } from '../utils.js';
 
 const STATUS_LABELS = { in_stock: '庫存', listed: '上架中', sold: '已售出' };
 const LANGUAGES = ['日文', '中文', '英文', '韓文'];
@@ -230,7 +230,7 @@ function openItemForm(item = null) {
     <div class="form-group" style="margin-bottom:16px">
       <label class="form-label" for="picker-q">從遊々亭帶入卡片資料（選填）</label>
       <div style="display:flex;gap:8px">
-        <input id="picker-q" class="form-input" placeholder="日文卡名或卡號，例如 ピカチュウex 或 236/187" />
+        <input id="picker-q" class="form-input" placeholder="例如 ピカチュウex、236/187 或 M6a_158" />
         <button class="btn-secondary" id="picker-go" type="button">搜尋</button>
       </div>
       <div class="form-hint">連結後，倉庫會顯示遊々亭市價，並自動加入卡牌市場追蹤</div>
@@ -323,13 +323,13 @@ function openItemForm(item = null) {
     try {
       const { results } = await api.marketSearch(q);
       if (!results.length) {
-        pickerResults.innerHTML = '<div class="form-hint" style="padding:8px 0">遊々亭找不到這張卡，請改用日文卡名或卡號</div>';
+        pickerResults.innerHTML = '<div class="form-hint" style="padding:8px 0">遊々亭找不到這張卡，請改用日文卡名、卡號（158/103）或系列＋編號（M6a_158）</div>';
         return;
       }
       pickerResults.innerHTML = `<div class="picker-results">${results.map((r, idx) => `
         <button type="button" class="picker-item" data-idx="${idx}">
           ${r.imageUrl ? `<img src="${escHtml(r.imageUrl)}" alt="" loading="lazy">` : ''}
-          <span style="flex:1">${escHtml(r.name)}<br><span class="text-muted">${escHtml(r.set)} · ${escHtml(r.cardNumber)} · ${escHtml(r.rarity)}</span></span>
+          <span style="flex:1">${escHtml(r.name)}<br><span class="text-muted">${cardMeta(r)}</span></span>
           <span class="price-value">${formatTwd(r.priceTwd)}</span>
         </button>`).join('')}</div>`;
       pickerResults.querySelectorAll('.picker-item').forEach(b => b.addEventListener('click', () => {

@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { escHtml, showToast, formatTwd, paginate, renderPagination } from '../utils.js';
+import { escHtml, showToast, formatTwd, paginate, renderPagination, cardMeta } from '../utils.js';
 
 let searchResults = [];
 let watchlist = { rate: 0, items: [] };
@@ -19,10 +19,10 @@ export async function renderMarket(container) {
       <div class="settings-section">
         <div class="settings-title">🔍 查詢卡價</div>
         <form id="market-search-form" style="display:flex;gap:10px">
-          <input type="search" id="market-q" class="form-input" placeholder="日文卡名或卡號，例如 リザードンex 或 236/187" />
+          <input type="search" id="market-q" class="form-input" placeholder="例如 リザードンex、236/187 或 M6a_158" />
           <button class="btn-primary" type="submit" style="flex:none;min-width:96px">搜尋</button>
         </form>
-        <div class="form-hint" style="margin-top:8px">遊々亭只能用日文卡名或卡片編號搜尋，中文卡名查不到</div>
+        <div class="form-hint" style="margin-top:8px">可以輸入日文卡名、卡號（158/103），或卡片上的系列＋編號（M6a_158）。中文卡名查不到</div>
         <div id="market-results" style="margin-top:16px"></div>
       </div>
 
@@ -96,7 +96,7 @@ async function runSearch(q) {
     const { rate, results } = await api.marketSearch(q);
     searchResults = results;
     if (!results.length) {
-      el.innerHTML = `<div class="empty-state"><div class="empty-icon">🔎</div><div class="empty-title">找不到「${escHtml(q)}」</div><div class="empty-desc">請改用日文卡名或卡片編號</div></div>`;
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">🔎</div><div class="empty-title">找不到「${escHtml(q)}」</div><div class="empty-desc">請改用日文卡名、卡號（158/103）或系列＋編號（M6a_158）</div></div>`;
       return;
     }
     el.innerHTML = `
@@ -108,7 +108,7 @@ async function runSearch(q) {
               ${r.imageUrl ? `<img src="${escHtml(r.imageUrl)}" alt="${escHtml(r.name)}" loading="lazy">` : ''}
             </a>
             <strong>${escHtml(r.name)}</strong>
-            <span class="text-muted text-sm">${escHtml(r.set)} · ${escHtml(r.cardNumber)} · ${escHtml(r.rarity)}</span>
+            <span class="text-muted text-sm">${cardMeta(r)}</span>
             <span><span class="price-value">${formatTwd(r.priceTwd)}</span> <span class="text-muted text-sm">（${r.priceJpy != null ? r.priceJpy.toLocaleString() + ' 円' : '—'}）</span></span>
             <span class="text-sm ${r.stock ? 'text-muted' : 'profit-neg'}">${r.stock ? `在庫 ${r.stock}` : '缺貨'}</span>
             <button class="btn-primary btn-sm" data-watch="${idx}">＋ 追蹤</button>
@@ -167,7 +167,7 @@ function renderWatchlist() {
             return `
               <tr>
                 <td>${i.imageUrl ? `<img src="${escHtml(i.imageUrl)}" alt="" class="price-card-img" loading="lazy">` : ''}</td>
-                <td class="wrap"><a href="${escHtml(i.url)}" target="_blank" rel="noopener" style="color:inherit"><strong>${escHtml(i.name)}</strong></a><br><span class="text-muted text-sm">${escHtml(i.set)} · ${escHtml(i.cardNumber)} · ${escHtml(i.rarity)}</span></td>
+                <td class="wrap"><a href="${escHtml(i.url)}" target="_blank" rel="noopener" style="color:inherit"><strong>${escHtml(i.name)}</strong></a><br><span class="text-muted text-sm">${cardMeta(i)}</span></td>
                 <td class="num"><span class="price-value">${formatTwd(i.priceTwd)}</span></td>
                 <td class="num">${i.priceJpy != null ? i.priceJpy.toLocaleString() + ' 円' : '—'}</td>
                 <td class="num">${change == null ? '<span class="text-muted">—</span>' : change > 0 ? `<span class="price-change-up">▲ ${change.toFixed(1)}%</span>` : `<span class="price-change-down">▼ ${Math.abs(change).toFixed(1)}%</span>`}</td>
