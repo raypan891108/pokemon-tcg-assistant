@@ -96,45 +96,77 @@ async function notifyNewTournaments(tournaments) {
   );
 }
 
+// Discord accepts at most 10 embeds per message
+const MAX_EMBEDS = 10;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function formatDateTime(value) {
+  const d = new Date(value);
+  if (isNaN(d)) return value || '待公佈';
+  return d.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+// Each tournament is reminded at most twice: when it enters the "N days before"
+// window, and again in its last 24 hours. Sent reminders are recorded per
+// tournament and deadline (a changed deadline is reminded again), and only
+// after Discord accepted the message, so nothing is lost while no webhook is set.
 async function notifyDeadlineReminders() {
   const settings = await storage.getSettings();
-  if (!settings.notifyTournaments) return;
+  if (!settings.notifyTournaments || !settings.discordWebhook) return;
 
-  const tournaments = await storage.getTournaments();
-  const now = new Date();
+  const [tournaments, sent] = await Promise.all([storage.getTournaments(), storage.getReminders()]);
+  const now = Date.now();
   const daysThreshold = settings.notifyDaysBeforeDeadline || 3;
 
-  const upcoming = tournaments.filter(t => {
-    if (!t.deadline) return false;
-    const deadline = new Date(t.deadline);
-    const daysLeft = (deadline - now) / (1000 * 60 * 60 * 24);
-    return daysLeft > 0 && daysLeft <= daysThreshold;
-  });
+  const due = [];
+  for (const t of tournaments) {
+    if (!t.deadline) continue;
+    const msLeft = new Date(t.deadline) - now;
+    if (!(msLeft > 0 && msLeft <= daysThreshold * DAY_MS)) continue;
+    const key = `${t.id}|${t.deadline}`;
+    const stage = msLeft <= DAY_MS ? 'lastDay' : 'window';
+    const record = sent[key] || {};
+    // A tournament first seen in its last day only gets the last-day reminder
+    if (record[stage] || (stage === 'window' && record.lastDay)) continue;
+    due.push({ t, key, stage, msLeft });
+  }
 
-  if (upcoming.length === 0) return;
+  // Forget reminders for deadlines that have passed
+  const active = Object.fromEntries(Object.entries(sent).filter(([key]) => new Date(key.split('|').pop()) > now));
 
-  const embeds = upcoming.map(t => {
-    const deadline = new Date(t.deadline);
-    const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
-    return {
+  if (due.length === 0) {
+    if (Object.keys(active).length !== Object.keys(sent).length) await storage.saveReminders(active);
+    return;
+  }
+
+  for (let i = 0; i < due.length; i += MAX_EMBEDS) {
+    const batch = due.slice(i, i + MAX_EMBEDS);
+    const embeds = batch.map(({ t, stage, msLeft }) => ({
       title: `⏰ ${t.name}`,
-      description: `報名截止還剩 **${daysLeft} 天**！`,
-      color: daysLeft <= 1 ? 0xFF0000 : 0xFF8C00,
+      description: stage === 'lastDay'
+        ? `報名截止**不到 24 小時**！`
+        : `報名截止還剩 **${Math.ceil(msLeft / DAY_MS)} 天**！`,
+      color: stage === 'lastDay' ? 0xFF0000 : 0xFF8C00,
       fields: [
-        { name: '截止日期', value: t.deadline, inline: true },
-        { name: '比賽日期', value: t.date || '待公佈', inline: true },
+        { name: '截止時間', value: formatDateTime(t.deadline), inline: true },
+        { name: '比賽日期', value: t.date ? formatDateTime(t.date) : '待公佈', inline: true },
         { name: '地點', value: t.location || '待公佈', inline: true },
       ],
       url: t.registrationUrl || t.url || undefined,
       footer: { text: 'Pokemon TCG 助手' },
       timestamp: new Date().toISOString(),
-    };
-  });
+    }));
 
-  await sendDiscordNotification(
-    `⚠️ **${upcoming.length} 個比賽即將截止報名！**`,
-    embeds
-  );
+    const ok = await sendDiscordNotification(
+      i === 0 ? `⚠️ **${due.length} 個比賽即將截止報名！**` : '',
+      embeds
+    );
+    if (!ok) break;
+    const at = new Date().toISOString();
+    for (const { key, stage } of batch) active[key] = { ...active[key], [stage]: at };
+  }
+
+  await storage.saveReminders(active);
 }
 
 async function sendTestNotification() {

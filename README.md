@@ -47,6 +47,7 @@ npm install
 | `./scripts/autostart.sh status` | 查看是否在執行 |
 | `./scripts/autostart.sh logs` | 查看 log（`Ctrl + C` 離開） |
 | `./scripts/autostart.sh restart` | **修改程式後**重新打包並重新啟動 |
+| `./scripts/autostart.sh password` | 設定、修改或取消登入密碼 |
 | `./scripts/autostart.sh uninstall` | 停止網站並取消自動啟動 |
 
 Log 存在 `~/Library/Logs/pokemon-tcg-assistant.log`。
@@ -132,11 +133,17 @@ caffeinate -i npm start
 
 ### 密碼登入（選用）
 
-透過 Tailscale 只有你 Tailscale 網路裡的裝置能連進來，所以預設不需要密碼。如果 Tailscale 網路裡還有別人的裝置，可以加上登入密碼（密碼只存在你自己才能讀的設定檔裡）：
+透過 Tailscale 只有你 Tailscale 網路裡的裝置能連進來，所以預設不需要密碼。如果 Tailscale 網路裡還有別人的裝置，請加上登入密碼：
 
 ```bash
-APP_PASSWORD='你的密碼' ./scripts/autostart.sh install
+./scripts/autostart.sh password
 ```
+
+- 會請你輸入兩次密碼（輸入時不會顯示，也不會留在終端機的指令紀錄裡），至少 8 個字元。
+- 密碼只存在你自己才能讀的背景服務設定檔裡；之後重新執行 `install` 也會保留。
+- 修改密碼會讓所有裝置登出，重新登入一次即可。
+- 想取消密碼：執行同一個指令，直接按 Enter 再輸入 `y`。
+- 用 `./scripts/autostart.sh status` 可以看到目前有沒有設定密碼。
 
 ### 疑難排解
 
@@ -170,15 +177,15 @@ APP_PASSWORD='你的密碼' ./scripts/autostart.sh install
 | `settings.json` | 使用者設定（含 Discord Webhook） |
 | `products.json`、`events.json`、`tournaments.json`、`last_fetch.json`、`decks.json` | 抓取的資料與快取，每次會重新抓 |
 
-這個 repo 是公開的，所以 `backend/data/` 裡的檔案**都不會放進 git**，倉庫紀錄只存在這台 Mac 上。請用下列任一種方式備份：
+這個 repo 是公開的，所以 `backend/data/` 裡的檔案**都不會放進 git**。
 
-- **Time Machine**：有開的話會自動備份整個專案資料夾。
-- **匯出 CSV**：在「賣場倉庫」頁按「⬇ 匯出 CSV」。
-- **複製到 iCloud 雲碟**（會建立一個以日期命名的資料夾）：
+### 自動備份
 
-```bash
-cp -R backend/data "$HOME/Library/Mobile Documents/com~apple~CloudDocs/TCG備份-$(date +%Y%m%d)"
-```
+網站每天會自動把 `inventory.json`、`watchlist.json`、`settings.json` 複製一份到 **iCloud 雲碟 › TCG助手備份**，每天一個以日期命名的資料夾（例如 `2026-11-02`），保留最近 30 天。沒有開 iCloud 雲碟時，會改存到「文件」資料夾。
+
+- 「⚙️ 設定」頁可以看到上次備份的時間，也可以按「💾 立即備份」。
+- 要還原時，把備份資料夾裡的檔案複製回 `backend/data/`，再執行 `./scripts/autostart.sh restart`。
+- 另外也可以在「賣場倉庫」頁按「⬇ 匯出 CSV」，用 Excel 開啟。
 
 ---
 

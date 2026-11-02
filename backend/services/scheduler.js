@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const storage = require('./storage');
 const notifier = require('./notifier');
 const market = require('./market');
+const backup = require('./backup');
 const twScraper = require('../scrapers/tw-scraper');
 const jpScraper = require('../scrapers/jp-scraper');
 const usScraper = require('../scrapers/us-scraper');
@@ -76,6 +77,13 @@ async function runFetch() {
     results.errors.push(...errors.map(e => `Market: ${e}`));
   } catch (e) {
     results.errors.push(`Market: ${e.message}`);
+  }
+
+  // Daily copy of your own records (inventory, watchlist, settings)
+  try {
+    await backup.backupIfDue();
+  } catch (e) {
+    results.errors.push(`Backup: ${e.message}`);
   }
 
   // Send Discord notifications for new items

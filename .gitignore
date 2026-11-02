@@ -16,3 +16,4 @@ backend/data/tournaments.json
 backend/data/last_fetch.json
 backend/data/decks.json
 backend/data/prices.json
+backend/data/reminders.json

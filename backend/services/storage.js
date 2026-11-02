@@ -13,6 +13,7 @@ const FILE_NAMES = {
   inventory: 'inventory.json',
   watchlist: 'watchlist.json',
   decks: 'decks.json',
+  reminders: 'reminders.json',
 };
 
 // Default settings
@@ -66,6 +67,8 @@ async function mergeAndSave(doc, newItems) {
 }
 
 module.exports = {
+  dataDir: DATA_DIR,
+
   getProducts: () => read('products', []),
   getEvents: () => read('events', []),
   getTournaments: () => read('tournaments', []),
@@ -75,6 +78,9 @@ module.exports = {
   saveWatchlist: (items) => write('watchlist', items),
   getDecks: () => read('decks', {}),
   saveDecks: (data) => write('decks', data),
+  // Deadline reminders already sent: { "<tournament id>|<deadline>": { window, lastDay } }
+  getReminders: () => read('reminders', {}),
+  saveReminders: (data) => write('reminders', data),
   getSettings: async () => ({ ...DEFAULT_SETTINGS, ...await read('settings', {}) }),
   saveSettings: (settings) => write('settings', settings),
   getLastFetch: () => read('lastFetch', {}),

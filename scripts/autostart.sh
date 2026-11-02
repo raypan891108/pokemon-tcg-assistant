@@ -7,8 +7,9 @@
 #   ./scripts/autostart.sh status      show whether it is running
 #   ./scripts/autostart.sh logs        follow the log
 #   ./scripts/autostart.sh uninstall   stop it and remove auto-start
+#   ./scripts/autostart.sh password    set, change or remove the login password (asked, not typed on the command line)
 #
-# Optional login password: APP_PASSWORD='...' ./scripts/autostart.sh install
+# Reinstalling keeps a password set earlier.
 set -euo pipefail
 
 LABEL="com.pokemon-tcg.assistant"
@@ -26,6 +27,11 @@ xml_escape() {
 
 is_loaded() {
   launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1
+}
+
+# Password stored in the current plist, if any
+saved_password() {
+  [ -f "$PLIST" ] && /usr/libexec/PlistBuddy -c 'Print :EnvironmentVariables:APP_PASSWORD' "$PLIST" 2>/dev/null || true
 }
 
 build() {
@@ -57,9 +63,11 @@ install() {
 
   build
 
+  # APP_PASSWORD unset: keep the saved password; set (even to empty): use it
+  local password="${APP_PASSWORD-$(saved_password)}"
   local password_entry=""
-  if [ -n "${APP_PASSWORD:-}" ]; then
-    password_entry="<key>APP_PASSWORD</key><string>$(xml_escape "$APP_PASSWORD")</string>"
+  if [ -n "$password" ]; then
+    password_entry="<key>APP_PASSWORD</key><string>$(xml_escape "$password")</string>"
   fi
 
   mkdir -p "$(dirname "$PLIST")" "$(dirname "$LOG")"
@@ -99,8 +107,34 @@ EOF
     sleep 1
   fi
   launchctl bootstrap "$DOMAIN" "$PLIST"
-  echo "==> 已設定登入後自動啟動"
+  echo "==> 已設定登入後自動啟動$([ -n "$password" ] && echo "（已啟用密碼登入）")"
   wait_until_up
+}
+
+# Asked with hidden input so the password never lands in the shell history
+set_password() {
+  local p1 p2
+  read -rsp "新的登入密碼（至少 8 個字元；直接按 Enter 表示取消密碼）: " p1; echo
+  if [ -z "$p1" ]; then
+    read -rp "確定要取消密碼？任何連得到網站的人都能使用 (y/N) " p2
+    [ "$p2" = "y" ] || [ "$p2" = "Y" ] || { echo "已取消，沒有變更"; exit 0; }
+  else
+    if [ ${#p1} -lt 8 ]; then
+      echo "密碼太短，至少要 8 個字元" >&2
+      exit 1
+    fi
+    read -rsp "再輸入一次: " p2; echo
+    if [ "$p1" != "$p2" ]; then
+      echo "兩次輸入不一樣，沒有變更" >&2
+      exit 1
+    fi
+  fi
+  APP_PASSWORD="$p1" install
+  if [ -n "$p1" ]; then
+    echo "🔒 已設定密碼。所有裝置都要重新登入一次。"
+  else
+    echo "🔓 已取消密碼。"
+  fi
 }
 
 restart() {
@@ -119,6 +153,7 @@ status() {
     pid=$(launchctl print "$DOMAIN/$LABEL" | awk '/^\tpid = / { print $3 }')
     echo "自動啟動：已安裝"
     echo "程序：${pid:-未執行（launchd 會自動重試）}"
+    echo "登入密碼：$([ -n "$(saved_password)" ] && echo "已設定" || echo "未設定")"
   else
     echo "自動啟動：未安裝"
   fi
@@ -149,6 +184,7 @@ case "${1:-}" in
   status) status ;;
   logs) logs ;;
   uninstall) uninstall ;;
+  password) set_password ;;
   *)
     cat <<EOF
 用法：$0 <指令>
@@ -158,8 +194,9 @@ case "${1:-}" in
   status      查看是否在執行
   logs        查看 log（Ctrl + C 離開）
   uninstall   停止網站並移除自動啟動
+  password    設定、修改或取消登入密碼
 
-要加登入密碼：APP_PASSWORD='你的密碼' $0 install
+重新執行 install 會保留已設定的密碼。
 EOF
     exit 1
     ;;

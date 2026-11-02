@@ -8,6 +8,7 @@ const notifier = require('./services/notifier');
 const inventory = require('./services/inventory');
 const market = require('./services/market');
 const decks = require('./services/decks');
+const backup = require('./services/backup');
 
 // The Express app; server.js starts it
 const app = express();
@@ -133,6 +134,11 @@ app.post('/api/market/refresh', handle(() => market.refreshWatchlist()));
 app.get('/api/decks', handle(req => decks.getMeta(req.query.format, req.query.refresh === 'true')));
 
 app.get('/api/decks/:id/list', handle(req => decks.getSampleList(req.params.id, req.query.format)));
+
+// Backups of your own records
+app.get('/api/backup', handle(() => backup.getStatus()));
+
+app.post('/api/backup', handle(() => backup.backupNow()));
 
 // Settings
 app.get('/api/settings', handle(() => storage.getSettings()));

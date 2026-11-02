@@ -148,6 +148,14 @@ function renderSettingsForm(settings) {
       <button class="btn-primary" id="btn-save-seller" style="max-width:200px">💾 儲存賣場設定</button>
     </div>
 
+    <!-- Backups -->
+    <div class="settings-section">
+      <div class="settings-title">💾 自動備份</div>
+      <div class="form-hint" style="margin-bottom:12px">每天自動把賣場倉庫、追蹤清單和設定複製一份，保留最近 30 天</div>
+      <div id="backup-status" class="text-sm" style="margin-bottom:12px;line-height:1.7">載入中...</div>
+      <button class="btn-secondary" id="btn-backup-now">💾 立即備份</button>
+    </div>
+
     <!-- Account (only when the server requires a password) -->
     <div class="settings-section" id="account-section" hidden>
       <div class="settings-title">🔒 帳號</div>
@@ -187,6 +195,35 @@ function renderSettingsForm(settings) {
     } finally {
       btn.disabled = false;
       btn.textContent = '🔔 測試通知';
+    }
+  });
+
+  const showBackupStatus = async () => {
+    const el = document.getElementById('backup-status');
+    try {
+      const s = await api.backupStatus();
+      // Show the iCloud Drive folder the way Finder names it
+      s.dir = s.dir.replace(/^.*\/com~apple~CloudDocs/, 'iCloud 雲碟');
+      el.innerHTML = s.latest
+        ? `上次備份：<strong>${new Date(s.latestAt || s.latest).toLocaleString('zh-TW')}</strong>（共 ${s.count} 份）<br><span class="text-muted">位置：${escHtml(s.dir)}</span>`
+        : `還沒有備份，下次自動更新時會建立第一份<br><span class="text-muted">位置：${escHtml(s.dir)}</span>`;
+    } catch (e) {
+      el.textContent = `無法讀取備份狀態：${e.message}`;
+    }
+  };
+  showBackupStatus();
+
+  document.getElementById('btn-backup-now').addEventListener('click', async e => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    try {
+      const { files } = await api.backupNow();
+      showToast(`已備份 ${files.length} 個檔案`, 'success');
+      await showBackupStatus();
+    } catch (err) {
+      showToast(`備份失敗：${err.message}`, 'error');
+    } finally {
+      btn.disabled = false;
     }
   });
 
