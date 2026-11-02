@@ -68,8 +68,9 @@ btnRefresh.addEventListener('click', async () => {
       showToast(result.reason === 'already_running' ? '資料更新中，請稍候...' : '更新失敗', 'error');
     }
 
-    // Update badges
+    // Update badges and the last-update time
     await updateBadges();
+    await checkUpdates({ quiet: true });
 
     // Refresh current page
     await navigate(currentPage);
@@ -121,6 +122,40 @@ async function checkHealth() {
   } catch {
     dot.className = 'status-dot error';
     text.textContent = '後端離線';
+  }
+}
+
+// ─── Hourly update status ────────────────────────────────────
+// The backend re-fetches every hour; show when, and pick up new data in an open page
+let seenRunAt = null;
+
+function formatTime(iso) {
+  return iso ? new Date(iso).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false }) : '—';
+}
+
+// quiet: after a manual refresh, which already showed its own result
+async function checkUpdates({ quiet = false } = {}) {
+  const el = document.getElementById('fetch-times');
+  try {
+    const status = await api.schedulerStatus();
+    el.textContent = status.running
+      ? '正在抓取最新資料...'
+      : `上次更新 ${formatTime(status.lastRunAt)}${status.nextRunAt ? ` · 下次 ${formatTime(status.nextRunAt)}` : ''}`;
+
+    // A fetch finished since we last looked
+    if (!quiet && seenRunAt && status.lastRunAt && status.lastRunAt !== seenRunAt && !status.running) {
+      const r = status.lastResult || {};
+      const found = (r.newProducts || 0) + (r.newEvents || 0) + (r.newTournaments || 0);
+      await updateBadges();
+      if (found > 0) {
+        showToast(`🔄 自動更新發現 ${found} 筆新資料`, 'success', 6000);
+        // Re-render only the dashboard, which has no inputs or dialogs to disturb
+        if (currentPage === 'dashboard' && !document.querySelector('.modal-backdrop')) await navigate('dashboard');
+      }
+    }
+    if (!status.running) seenRunAt = status.lastRunAt;
+  } catch {
+    el.textContent = '';
   }
 }
 
@@ -182,6 +217,8 @@ window.addEventListener('auth-required', showLogin);
   // Render default page
   await navigate('dashboard');
 
-  // Periodic health check
-  setInterval(checkHealth, 30000);
+  await checkUpdates();
+
+  // Periodic health and update check
+  setInterval(() => { checkHealth(); checkUpdates(); }, 30000);
 })();

@@ -41,6 +41,7 @@ export const api = {
   settings: () => get('/settings'),
   saveSettings: (s) => post('/settings', s),
   fetch: () => post('/fetch'),
+  schedulerStatus: () => get('/scheduler/status'),
   testNotify: () => post('/notify/test'),
   health: () => get('/health'),
   authStatus: () => get('/auth/status'),

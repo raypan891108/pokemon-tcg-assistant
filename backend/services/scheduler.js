@@ -10,6 +10,9 @@ const SCRAPERS = { tw: twScraper, jp: jpScraper, us: usScraper };
 
 let isRunning = false;
 let scheduledJob = null;
+let intervalHours = null;
+// Result of the most recent fetch, shown in the sidebar
+let lastRun = null;
 
 async function fetchAll() {
   if (isRunning) {
@@ -18,10 +21,22 @@ async function fetchAll() {
   }
   isRunning = true;
   try {
-    return await runFetch();
+    const result = await runFetch();
+    lastRun = { at: new Date().toISOString(), ...result };
+    return result;
   } finally {
     isRunning = false;
   }
+}
+
+// Matches the cron expression `0 */h * * *`: the next top of an hour divisible by h
+function nextRunAt(hours, now = new Date()) {
+  const next = new Date(now);
+  next.setMinutes(0, 0, 0);
+  do {
+    next.setHours(next.getHours() + 1);
+  } while (next.getHours() % hours !== 0);
+  return next.toISOString();
 }
 
 async function runFetch() {
@@ -88,6 +103,7 @@ async function runFetch() {
 async function start() {
   const settings = await storage.getSettings();
   const hours = Math.min(Math.max(Number(settings.fetchIntervalHours) || 1, 1), 23);
+  intervalHours = hours;
   const cronExpr = `0 */${hours} * * *`;
 
   console.log(`[Scheduler] Starting with interval: every ${hours} hour(s)`);
@@ -112,10 +128,22 @@ function stop() {
 }
 
 async function getStatus() {
+  const lastFetch = await storage.getLastFetch();
+  // Before the first fetch of this run, fall back to the newest saved timestamp
+  const lastSaved = Object.values(lastFetch).sort().pop() || null;
   return {
     running: isRunning,
     scheduled: !!scheduledJob,
-    lastFetch: await storage.getLastFetch(),
+    intervalHours,
+    lastRunAt: lastRun?.at || lastSaved,
+    nextRunAt: scheduledJob ? nextRunAt(intervalHours) : null,
+    lastResult: lastRun && {
+      newProducts: lastRun.newProducts,
+      newEvents: lastRun.newEvents,
+      newTournaments: lastRun.newTournaments,
+      errors: lastRun.errors?.length || 0,
+    },
+    lastFetch,
   };
 }
 

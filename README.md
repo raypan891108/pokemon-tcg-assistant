@@ -30,13 +30,48 @@
 npm install
 ```
 
-### 平常使用
+### 平常使用：在背景自動執行（建議）
+
+```bash
+./scripts/autostart.sh install
+```
+
+網站會在背景執行，打開 **http://127.0.0.1:3001** 即可使用：
+
+- Mac 登入後自動啟動，關掉終端機也不會停。
+- 網站當掉時會在幾秒內自動重新啟動。
+- 接著電源時 Mac 不會睡眠；用電池時照常睡眠，不會耗電。
+
+| 指令 | 用途 |
+|---|---|
+| `./scripts/autostart.sh status` | 查看是否在執行 |
+| `./scripts/autostart.sh logs` | 查看 log（`Ctrl + C` 離開） |
+| `./scripts/autostart.sh restart` | **修改程式後**重新打包並重新啟動 |
+| `./scripts/autostart.sh uninstall` | 停止網站並取消自動啟動 |
+
+Log 存在 `~/Library/Logs/pokemon-tcg-assistant.log`。
+
+### 手動執行
+
+不想在背景執行時，也可以在終端機執行（視窗要保持開著，按 `Ctrl + C` 停止）：
 
 ```bash
 npm start
 ```
 
-會先打包網頁再啟動網站，打開 **http://127.0.0.1:3001** 即可使用。啟動後會立刻抓一次資料，之後每小時自動更新。終端機視窗要保持開著，按 `Ctrl + C` 停止。
+已經設定背景執行的話，兩者會搶同一個 port，請先執行 `./scripts/autostart.sh uninstall`。
+
+---
+
+## 自動更新資料
+
+- 網站啟動時會立刻抓一次資料，之後**每小時整點**自動重新抓取，和既有資料比對，有新的商品、活動、比賽就加入。
+- 側欄會顯示「上次更新」和「下次更新」的時間。
+- 網頁開著時，若自動更新找到新資料，會跳出「自動更新發現 N 筆新資料」的提示，並更新側欄的數字。
+- 有設定 Discord Webhook 的話，新資料也會推播到 Discord。
+- 追蹤清單裡的卡片價格也會在每次更新時重新抓取。
+- 想改間隔：到「設定」頁修改「自動更新間隔」，再執行 `./scripts/autostart.sh restart`。
+- Mac 睡眠時不會更新，醒來後會在下一個整點繼續。
 
 ### 修改程式時（開發模式）
 
@@ -58,13 +93,13 @@ Tailscale 會把你的 Mac 和手機連成一個私人網路。只有登入**你
 
 1. **Mac**：打開「應用程式」裡的 **Tailscale**，登入帳號（選單列會出現 Tailscale 圖示）。
 2. **手機**：從 App Store 或 Google Play 安裝 **Tailscale**，用**同一個帳號**登入並連線。
-3. **Mac**：在專案資料夾啟動網站：
+3. **Mac**：確認網站在執行。還沒設定背景執行的話，先執行：
 
    ```bash
-   npm start
+   ./scripts/autostart.sh install
    ```
 
-4. **Mac**：另開一個終端機視窗，讓 Tailscale 把網站分享到你的私人網路（只需要做一次）：
+4. **Mac**：讓 Tailscale 把網站分享到你的私人網路（只需要做一次）：
 
    ```bash
    /Applications/Tailscale.app/Contents/MacOS/Tailscale serve --bg 3001
@@ -75,11 +110,15 @@ Tailscale 會把你的 Mac 和手機連成一個私人網路。只有登入**你
 
 5. **手機**：確認 Tailscale 是連線狀態，用瀏覽器打開上一步的網址。可以「加入主畫面」當成 App 使用。
 
-`--bg` 會讓分享設定一直保留，之後每次只要執行 `npm start` 就好。
+`--bg` 會讓分享設定一直保留；搭配背景執行，之後什麼都不用做，Mac 開著手機就能連。
 
 ### 讓 Mac 不要睡眠
 
-Mac 睡眠時手機會連不到，自動更新也會暫停。啟動時改用下面這個指令，網站執行期間 Mac 就不會進入睡眠（螢幕還是可以關）：
+Mac 睡眠時手機會連不到，自動更新也會暫停。
+
+- 用背景執行時，**接著電源**就不會睡眠（螢幕還是可以關）。
+- 闔上筆電螢幕還是會睡眠，除非有接外接螢幕。
+- 手動執行時，可以改用下面的指令讓 Mac 保持清醒：
 
 ```bash
 caffeinate -i npm start
@@ -93,15 +132,16 @@ caffeinate -i npm start
 
 ### 密碼登入（選用）
 
-透過 Tailscale 只有你自己的裝置能連進來，所以預設不需要密碼。如果 Tailscale 網路裡還有別人的裝置，可以加上登入密碼：
+透過 Tailscale 只有你 Tailscale 網路裡的裝置能連進來，所以預設不需要密碼。如果 Tailscale 網路裡還有別人的裝置，可以加上登入密碼（密碼只存在你自己才能讀的設定檔裡）：
 
 ```bash
-APP_PASSWORD='你的密碼' npm start
+APP_PASSWORD='你的密碼' ./scripts/autostart.sh install
 ```
 
 ### 疑難排解
 
-- **手機打不開網址**：確認手機 Tailscale 是連線狀態、Mac 上 `npm start` 還在執行。
+- **手機打不開網址**：確認手機 Tailscale 是連線狀態，並在 Mac 上執行 `./scripts/autostart.sh status` 確認網站在執行。
+- **網址出現 502**：網站沒有在執行，執行 `./scripts/autostart.sh install` 或 `npm start`。
 - **`tailscale serve` 無法使用**：改用直接連線。用下面的指令啟動，再用手機打開 `http://<Mac 的 Tailscale IP>:3001`（IP 在 Tailscale App 裡，通常是 `100.` 開頭）。這樣同一個 Wi-Fi 的其他人也連得到，所以一定要設密碼：
 
   ```bash
@@ -151,6 +191,8 @@ frontend/
   index.html
   src/pages/       各頁面
   vite.config.js   開發模式把 /api 轉給後端
+scripts/
+  autostart.sh     設定 Mac 背景自動執行（launchd）
 ```
 
 ---
