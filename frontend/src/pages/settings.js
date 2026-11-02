@@ -120,7 +120,7 @@ function renderSettingsForm(settings) {
         <label class="form-label" for="fetch-interval">自動更新間隔（小時）</label>
         <input type="number" id="fetch-interval" class="form-input" min="1" max="24"
           value="${settings.fetchIntervalHours || 1}" style="max-width:120px">
-        <div class="form-hint">建議 1-6 小時，過於頻繁可能被網站封鎖</div>
+        <div class="form-hint">建議 1-6 小時，過於頻繁可能被網站封鎖。只在本機執行時有效，部署到 Vercel 時由排程決定</div>
       </div>
       <div class="form-group">
         <label class="form-label" for="deadline-days">報名截止前幾天提醒</label>

@@ -2,8 +2,10 @@ const crypto = require('crypto');
 
 // Login is enabled only when APP_PASSWORD is set, so local development needs no password
 const PASSWORD = process.env.APP_PASSWORD || '';
-// A fixed SESSION_SECRET keeps people logged in across restarts; a random one logs everyone out on restart
-const SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+// Signs session cookies. Without SESSION_SECRET it is derived from the password, so it is
+// the same on every serverless instance and changing the password logs everyone out.
+const SECRET = process.env.SESSION_SECRET
+  || crypto.createHash('sha256').update(`tcg-session:${PASSWORD}`).digest('hex');
 const COOKIE = 'tcg_session';
 const SESSION_DAYS = 30;
 
@@ -90,4 +92,11 @@ function requireAuth(req, res, next) {
   res.status(401).json({ error: '請先登入' });
 }
 
-module.exports = { enabled, login, logout, status, requireAuth };
+// Scheduled jobs (Vercel Cron, Supabase pg_cron) send "Authorization: Bearer <CRON_SECRET>"
+function hasCronSecret(req) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return false;
+  return safeEqual(req.headers.authorization || '', `Bearer ${secret}`);
+}
+
+module.exports = { enabled, login, logout, status, requireAuth, hasCronSecret };

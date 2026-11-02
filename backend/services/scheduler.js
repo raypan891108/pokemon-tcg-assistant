@@ -6,6 +6,11 @@ const twScraper = require('../scrapers/tw-scraper');
 const jpScraper = require('../scrapers/jp-scraper');
 const usScraper = require('../scrapers/us-scraper');
 
+// Serverless functions are cut off after 60s, so cap the watchlist refresh there
+const MARKET_BUDGET_MS = process.env.VERCEL ? 35000 : Infinity;
+
+const SCRAPERS = { tw: twScraper, jp: jpScraper, us: usScraper };
+
 let isRunning = false;
 let scheduledJob = null;
 
@@ -15,52 +20,49 @@ async function fetchAll() {
     return { success: false, reason: 'already_running' };
   }
   isRunning = true;
+  try {
+    return await runFetch();
+  } finally {
+    isRunning = false;
+  }
+}
+
+async function runFetch() {
   const results = { products: [], events: [], tournaments: [], errors: [] };
+  const fetched = [];
 
   console.log('[Scheduler] Starting data fetch...');
   const startTime = Date.now();
 
-  const settings = storage.getSettings();
-  const regions = settings.regions || ['tw', 'jp', 'us'];
+  const settings = await storage.getSettings();
+  const regions = (settings.regions || ['tw', 'jp', 'us']).filter(r => SCRAPERS[r]);
 
   // Fetch from all regions in parallel
-  const tasks = [];
-
-  if (regions.includes('tw')) {
-    tasks.push(
-      twScraper.scrapeProducts().then(r => { results.products.push(...r); storage.updateLastFetch('tw-products'); }).catch(e => results.errors.push(`TW products: ${e.message}`)),
-      twScraper.scrapeEvents().then(r => { results.events.push(...r); }).catch(e => results.errors.push(`TW events: ${e.message}`)),
-      twScraper.scrapeTournaments().then(r => { results.tournaments.push(...r); }).catch(e => results.errors.push(`TW tournaments: ${e.message}`)),
-    );
-  }
-
-  if (regions.includes('jp')) {
-    tasks.push(
-      jpScraper.scrapeProducts().then(r => { results.products.push(...r); storage.updateLastFetch('jp-products'); }).catch(e => results.errors.push(`JP products: ${e.message}`)),
-      jpScraper.scrapeEvents().then(r => { results.events.push(...r); }).catch(e => results.errors.push(`JP events: ${e.message}`)),
-      jpScraper.scrapeTournaments().then(r => { results.tournaments.push(...r); }).catch(e => results.errors.push(`JP tournaments: ${e.message}`)),
-    );
-  }
-
-  if (regions.includes('us')) {
-    tasks.push(
-      usScraper.scrapeProducts().then(r => { results.products.push(...r); storage.updateLastFetch('us-products'); }).catch(e => results.errors.push(`US products: ${e.message}`)),
-      usScraper.scrapeEvents().then(r => { results.events.push(...r); }).catch(e => results.errors.push(`US events: ${e.message}`)),
-      usScraper.scrapeTournaments().then(r => { results.tournaments.push(...r); }).catch(e => results.errors.push(`US tournaments: ${e.message}`)),
-    );
-  }
+  const tasks = regions.flatMap(region => {
+    const scraper = SCRAPERS[region];
+    const label = region.toUpperCase();
+    return [
+      scraper.scrapeProducts().then(r => { results.products.push(...r); fetched.push(`${region}-products`); }).catch(e => results.errors.push(`${label} products: ${e.message}`)),
+      scraper.scrapeEvents().then(r => { results.events.push(...r); }).catch(e => results.errors.push(`${label} events: ${e.message}`)),
+      scraper.scrapeTournaments().then(r => { results.tournaments.push(...r); }).catch(e => results.errors.push(`${label} tournaments: ${e.message}`)),
+    ];
+  });
 
   await Promise.allSettled(tasks);
 
   // Save to storage and get newly added items
-  const newProducts = storage.saveProducts(results.products);
-  const newEvents = storage.saveEvents(results.events);
-  const newTournaments = storage.saveTournaments(results.tournaments);
+  const [newProducts, newEvents, newTournaments] = await Promise.all([
+    storage.saveProducts(results.products),
+    storage.saveEvents(results.events),
+    storage.saveTournaments(results.tournaments),
+    storage.updateLastFetch(fetched),
+  ]);
 
   // Refresh 遊々亭 prices for watched cards
   try {
-    const { errors } = await market.refreshWatchlist();
+    const { errors, skipped } = await market.refreshWatchlist({ deadline: startTime + MARKET_BUDGET_MS });
     results.errors.push(...errors.map(e => `Market: ${e}`));
+    if (skipped) console.log(`[Scheduler] Market refresh ran out of time; ${skipped} card(s) left for next run`);
   } catch (e) {
     results.errors.push(`Market: ${e.message}`);
   }
@@ -77,7 +79,6 @@ async function fetchAll() {
     console.warn('[Scheduler] Errors:', results.errors);
   }
 
-  isRunning = false;
   return {
     success: true,
     elapsed,
@@ -88,9 +89,10 @@ async function fetchAll() {
   };
 }
 
-function start() {
-  const settings = storage.getSettings();
-  const hours = settings.fetchIntervalHours || 1;
+// Long-running server only; on Vercel the cron endpoint calls fetchAll instead
+async function start() {
+  const settings = await storage.getSettings();
+  const hours = Math.min(Math.max(Number(settings.fetchIntervalHours) || 1, 1), 23);
   const cronExpr = `0 */${hours} * * *`;
 
   console.log(`[Scheduler] Starting with interval: every ${hours} hour(s)`);
@@ -114,11 +116,11 @@ function stop() {
   }
 }
 
-function getStatus() {
+async function getStatus() {
   return {
     running: isRunning,
     scheduled: !!scheduledJob,
-    lastFetch: storage.getLastFetch(),
+    lastFetch: await storage.getLastFetch(),
   };
 }
 

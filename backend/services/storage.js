@@ -1,23 +1,21 @@
 const fs = require('fs');
 const path = require('path');
 
-// DATA_DIR lets a deployment keep data on a persistent disk outside the app
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
-const FILES = {
-  products: path.join(DATA_DIR, 'products.json'),
-  events: path.join(DATA_DIR, 'events.json'),
-  tournaments: path.join(DATA_DIR, 'tournaments.json'),
-  lastFetch: path.join(DATA_DIR, 'last_fetch.json'),
-  settings: path.join(DATA_DIR, 'settings.json'),
-  inventory: path.join(DATA_DIR, 'inventory.json'),
-  watchlist: path.join(DATA_DIR, 'watchlist.json'),
-  decks: path.join(DATA_DIR, 'decks.json'),
-};
+// Each document (products, inventory, settings, ...) is one JSON value.
+// Locally they are files in DATA_DIR; when SUPABASE_URL is set (e.g. on Vercel)
+// they are rows in a Supabase table, since serverless functions can't keep files.
 
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
+const FILE_NAMES = {
+  products: 'products.json',
+  events: 'events.json',
+  tournaments: 'tournaments.json',
+  lastFetch: 'last_fetch.json',
+  settings: 'settings.json',
+  inventory: 'inventory.json',
+  watchlist: 'watchlist.json',
+  decks: 'decks.json',
+};
 
 // Default settings
 const DEFAULT_SETTINGS = {
@@ -34,26 +32,64 @@ const DEFAULT_SETTINGS = {
   jpyToTwd: 0.21,
 };
 
-function readJSON(filePath, defaultValue = []) {
-  try {
+// A missing document returns the default; any other failure throws, so a
+// read-modify-write never overwrites real data after a failed read.
+const fileDriver = {
+  name: 'file',
+  async read(doc, defaultValue) {
+    const filePath = path.join(DATA_DIR, FILE_NAMES[doc]);
     if (!fs.existsSync(filePath)) return defaultValue;
-    const raw = fs.readFileSync(filePath, 'utf-8');
-    return JSON.parse(raw);
-  } catch (e) {
-    console.error(`Failed to read ${filePath}:`, e.message);
-    return defaultValue;
+    return JSON.parse(await fs.promises.readFile(filePath, 'utf-8'));
+  },
+  async write(doc, value) {
+    await fs.promises.mkdir(DATA_DIR, { recursive: true });
+    await fs.promises.writeFile(path.join(DATA_DIR, FILE_NAMES[doc]), JSON.stringify(value, null, 2), 'utf-8');
+  },
+};
+
+// Talks to Supabase's REST API (PostgREST) directly; table schema is in supabase/schema.sql
+function supabaseDriver(url, key, table) {
+  const base = `${url.replace(/\/$/, '')}/rest/v1/${table}`;
+  // New "sb_secret_..." keys go in the apikey header only; legacy service_role JWTs also as Bearer
+  const headers = {
+    apikey: key,
+    ...(key.startsWith('eyJ') ? { Authorization: `Bearer ${key}` } : {}),
+  };
+
+  async function request(urlPath, options = {}) {
+    const res = await fetch(`${base}${urlPath}`, {
+      ...options,
+      headers: { ...headers, ...options.headers },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) throw new Error(`Supabase ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    return res;
   }
+
+  return {
+    name: 'supabase',
+    async read(doc, defaultValue) {
+      const res = await request(`?key=eq.${encodeURIComponent(doc)}&select=value`);
+      const rows = await res.json();
+      return rows.length ? rows[0].value : defaultValue;
+    },
+    async write(doc, value) {
+      await request('?on_conflict=key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify([{ key: doc, value, updated_at: new Date().toISOString() }]),
+      });
+    },
+  };
 }
 
-function writeJSON(filePath, data) {
-  try {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
-    return true;
-  } catch (e) {
-    console.error(`Failed to write ${filePath}:`, e.message);
-    return false;
-  }
-}
+const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const driver = process.env.SUPABASE_URL && SUPABASE_KEY
+  ? supabaseDriver(process.env.SUPABASE_URL, SUPABASE_KEY, process.env.SUPABASE_TABLE || 'tcg_store')
+  : fileDriver;
+
+const read = (doc, defaultValue) => driver.read(doc, defaultValue);
+const write = (doc, value) => driver.write(doc, value);
 
 // Merge new items with existing, deduplicated by id
 function mergeItems(existing, newItems) {
@@ -71,52 +107,47 @@ function mergeItems(existing, newItems) {
   return { items: Array.from(map.values()), added };
 }
 
+async function mergeAndSave(doc, newItems) {
+  const { items, added } = mergeItems(await read(doc, []), newItems);
+  await write(doc, items);
+  return added;
+}
+
 module.exports = {
-  getProducts: () => readJSON(FILES.products),
-  getEvents: () => readJSON(FILES.events),
-  getTournaments: () => readJSON(FILES.tournaments),
-  getInventory: () => readJSON(FILES.inventory),
-  saveInventory: (items) => writeJSON(FILES.inventory, items),
-  getWatchlist: () => readJSON(FILES.watchlist),
-  saveWatchlist: (items) => writeJSON(FILES.watchlist, items),
-  getDecks: () => readJSON(FILES.decks, {}),
-  saveDecks: (data) => writeJSON(FILES.decks, data),
-  getSettings: () => ({ ...DEFAULT_SETTINGS, ...readJSON(FILES.settings, {}) }),
-  getLastFetch: () => readJSON(FILES.lastFetch, {}),
+  driverName: driver.name,
+  fileDriver,
+  read,
+  write,
 
-  saveSettings: (settings) => writeJSON(FILES.settings, settings),
+  getProducts: () => read('products', []),
+  getEvents: () => read('events', []),
+  getTournaments: () => read('tournaments', []),
+  getInventory: () => read('inventory', []),
+  saveInventory: (items) => write('inventory', items),
+  getWatchlist: () => read('watchlist', []),
+  saveWatchlist: (items) => write('watchlist', items),
+  getDecks: () => read('decks', {}),
+  saveDecks: (data) => write('decks', data),
+  getSettings: async () => ({ ...DEFAULT_SETTINGS, ...await read('settings', {}) }),
+  saveSettings: (settings) => write('settings', settings),
+  getLastFetch: () => read('lastFetch', {}),
 
-  saveProducts: (newItems) => {
-    const existing = readJSON(FILES.products);
-    const { items, added } = mergeItems(existing, newItems);
-    writeJSON(FILES.products, items);
-    return added;
+  saveProducts: (newItems) => mergeAndSave('products', newItems),
+  saveEvents: (newItems) => mergeAndSave('events', newItems),
+  saveTournaments: (newItems) => mergeAndSave('tournaments', newItems),
+
+  // Record several fetch timestamps in one write (parallel writes would overwrite each other)
+  updateLastFetch: async (keys) => {
+    const data = await read('lastFetch', {});
+    const now = new Date().toISOString();
+    for (const key of keys) data[key] = now;
+    await write('lastFetch', data);
   },
 
-  saveEvents: (newItems) => {
-    const existing = readJSON(FILES.events);
-    const { items, added } = mergeItems(existing, newItems);
-    writeJSON(FILES.events, items);
-    return added;
-  },
-
-  saveTournaments: (newItems) => {
-    const existing = readJSON(FILES.tournaments);
-    const { items, added } = mergeItems(existing, newItems);
-    writeJSON(FILES.tournaments, items);
-    return added;
-  },
-
-  updateLastFetch: (region) => {
-    const data = readJSON(FILES.lastFetch, {});
-    data[region] = new Date().toISOString();
-    writeJSON(FILES.lastFetch, data);
-  },
-
-  getStats: () => {
-    const products = readJSON(FILES.products);
-    const events = readJSON(FILES.events);
-    const tournaments = readJSON(FILES.tournaments);
+  getStats: async () => {
+    const [products, events, tournaments] = await Promise.all([
+      read('products', []), read('events', []), read('tournaments', []),
+    ]);
     const now = new Date();
     const upcoming = tournaments.filter(t => {
       if (!t.deadline) return false;
@@ -132,5 +163,5 @@ module.exports = {
         return (now - added) < 7 * 24 * 60 * 60 * 1000;
       }).length,
     };
-  }
+  },
 };

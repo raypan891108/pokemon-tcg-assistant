@@ -47,7 +47,7 @@ npm run dev
 
 ## 部署到雲端
 
-要讓手機或其他電腦也能使用，請參考 [DEPLOY.md](DEPLOY.md)，部署到 Google Cloud 免費主機（含密碼登入與 HTTPS）。
+要讓手機或其他電腦也能使用，請參考 [DEPLOY.md](DEPLOY.md)，部署到 Vercel + Supabase（含密碼登入與 HTTPS）。
 
 ---
 
@@ -70,6 +70,8 @@ npm run dev
 - `watchlist.json` — 卡牌市場追蹤清單與價格紀錄
 - `decks.json` — 牌組推薦快取
 - `settings.json` — 使用者設定
+
+部署到 Vercel 時，這些資料改存在 Supabase 的 `tcg_store` 資料表。
 
 ---
 

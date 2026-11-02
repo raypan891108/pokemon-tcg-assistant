@@ -2,7 +2,7 @@ const axios = require('axios');
 const storage = require('./storage');
 
 async function sendDiscordNotification(message, embeds = []) {
-  const settings = storage.getSettings();
+  const settings = await storage.getSettings();
   if (!settings.discordWebhook) return false;
 
   try {
@@ -21,7 +21,7 @@ async function sendDiscordNotification(message, embeds = []) {
 
 async function notifyNewProducts(products) {
   if (!products || products.length === 0) return;
-  const settings = storage.getSettings();
+  const settings = await storage.getSettings();
   if (!settings.notifyNewProducts) return;
 
   const embeds = products.slice(0, 5).map(p => ({
@@ -47,7 +47,7 @@ async function notifyNewProducts(products) {
 
 async function notifyNewEvents(events) {
   if (!events || events.length === 0) return;
-  const settings = storage.getSettings();
+  const settings = await storage.getSettings();
   if (!settings.notifyEvents) return;
 
   const embeds = events.slice(0, 5).map(e => ({
@@ -72,7 +72,7 @@ async function notifyNewEvents(events) {
 
 async function notifyNewTournaments(tournaments) {
   if (!tournaments || tournaments.length === 0) return;
-  const settings = storage.getSettings();
+  const settings = await storage.getSettings();
   if (!settings.notifyTournaments) return;
 
   const embeds = tournaments.slice(0, 5).map(t => ({
@@ -97,10 +97,10 @@ async function notifyNewTournaments(tournaments) {
 }
 
 async function notifyDeadlineReminders() {
-  const settings = storage.getSettings();
+  const settings = await storage.getSettings();
   if (!settings.notifyTournaments) return;
 
-  const tournaments = storage.getTournaments();
+  const tournaments = await storage.getTournaments();
   const now = new Date();
   const daysThreshold = settings.notifyDaysBeforeDeadline || 3;
 

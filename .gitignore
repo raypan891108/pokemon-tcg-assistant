@@ -1,4 +1,5 @@
 node_modules/
+frontend/dist/
 .DS_Store
 
 # Holds the Discord webhook URL — keep it out of version control
@@ -7,3 +8,8 @@ backend/data/settings.json
 # Regenerated caches
 backend/data/decks.json
 backend/data/prices.json
+
+# Vercel CLI link and pulled environment variables (contain secrets)
+.vercel/
+.env
+.env.*

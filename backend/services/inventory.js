@@ -29,13 +29,13 @@ function withProfit(item) {
   return { ...item, totalCost, revenue, profit };
 }
 
-function defaultFee(soldPrice, quantity) {
-  const rate = Number(storage.getSettings().kapaipaiFeeRate) || 0;
+async function defaultFee(soldPrice, quantity) {
+  const rate = Number((await storage.getSettings()).kapaipaiFeeRate) || 0;
   return Math.round(soldPrice * quantity * rate / 100);
 }
 
-function list() {
-  return storage.getInventory().map(withProfit);
+async function list() {
+  return (await storage.getInventory()).map(withProfit);
 }
 
 function validateQuantity(data) {
@@ -43,7 +43,7 @@ function validateQuantity(data) {
   if (!Number.isInteger(data.quantity) || data.quantity < 1) throw new Error('數量需為 1 以上的整數');
 }
 
-function create(input) {
+async function create(input) {
   const data = sanitize(input);
   if (!data.name) throw new Error('卡名為必填');
   validateQuantity(data);
@@ -56,14 +56,14 @@ function create(input) {
     createdAt: now,
     updatedAt: now,
   };
-  const items = storage.getInventory();
+  const items = await storage.getInventory();
   items.unshift(item);
-  storage.saveInventory(items);
+  await storage.saveInventory(items);
   return withProfit(item);
 }
 
-function update(id, input) {
-  const items = storage.getInventory();
+async function update(id, input) {
+  const items = await storage.getInventory();
   const idx = items.findIndex(i => i.id === id);
   if (idx === -1) return null;
   const data = sanitize(input);
@@ -71,22 +71,22 @@ function update(id, input) {
   validateQuantity(data);
   if (data.quantity === null) delete data.quantity;
   items[idx] = { ...items[idx], ...data, updatedAt: new Date().toISOString() };
-  storage.saveInventory(items);
+  await storage.saveInventory(items);
   return withProfit(items[idx]);
 }
 
-function remove(id) {
-  const items = storage.getInventory();
+async function remove(id) {
+  const items = await storage.getInventory();
   const next = items.filter(i => i.id !== id);
   if (next.length === items.length) return false;
-  storage.saveInventory(next);
+  await storage.saveInventory(next);
   return true;
 }
 
 // Mark some or all of a lot as sold. Selling part of a lot splits it:
 // the sold cards become a new record and the rest stay in the original one.
-function sell(id, input) {
-  const items = storage.getInventory();
+async function sell(id, input) {
+  const items = await storage.getInventory();
   const idx = items.findIndex(i => i.id === id);
   if (idx === -1) return null;
   const item = items[idx];
@@ -101,7 +101,7 @@ function sell(id, input) {
     ...item,
     quantity,
     soldPrice: data.soldPrice,
-    fee: data.fee != null ? data.fee : defaultFee(data.soldPrice, quantity),
+    fee: data.fee != null ? data.fee : await defaultFee(data.soldPrice, quantity),
     shipping: data.shipping != null ? data.shipping : 0,
     soldAt: data.soldAt || now.split('T')[0],
     status: 'sold',
@@ -116,7 +116,7 @@ function sell(id, input) {
   } else {
     items[idx] = sold;
   }
-  storage.saveInventory(items);
+  await storage.saveInventory(items);
   return withProfit(record);
 }
 
