@@ -2,7 +2,7 @@
 
 自動追蹤 Pokemon TCG 台灣、日本、美國三地的最新**商品**、**活動**與**比賽**資訊，管理卡拍拍賣場倉庫，並透過 Discord 推播通知。
 
-網站跑在你自己的 Mac 上；用 [Tailscale](#用手機或其他電腦使用tailscale) 就能從手機或其他電腦連進來。
+網站跑在你自己的 Mac 或 Windows 電腦上；用 [Tailscale](#用手機或其他電腦使用tailscale) 就能從手機或其他電腦連進來。
 
 ---
 
@@ -52,6 +52,21 @@ npm install
 | `./scripts/autostart.sh uninstall` | 停止網站並取消自動啟動 |
 
 Log 存在 `~/Library/Logs/pokemon-tcg-assistant.log`。
+
+### Windows：在背景自動執行
+
+在 PowerShell 或命令提示字元裡，於專案資料夾執行：
+
+```bash
+scripts\autostart install
+```
+
+指令和 Mac 一樣（`status`、`logs`、`restart`、`password`、`uninstall`），只是把 `./scripts/autostart.sh` 換成 `scripts\autostart`：
+
+- 用「工作排程器」設定登入 Windows 後自動啟動，不會開視窗，關掉終端機也不會停。
+- 網站當掉時會在 10 秒內自動重新啟動。
+- 接著電源時電腦不會睡眠；用電池時照常睡眠。
+- 密碼存在 `%LOCALAPPDATA%\pokemon-tcg-assistant\config.json`，Log 存在同一個資料夾的 `pokemon-tcg-assistant.log`。
 
 ### 手動執行
 
@@ -106,6 +121,8 @@ Tailscale 會把你的 Mac 和手機連成一個私人網路。只有登入**你
    ```bash
    /Applications/Tailscale.app/Contents/MacOS/Tailscale serve --bg 3001
    ```
+
+   Windows 上是 `tailscale serve --bg 3001`（停止分享：`tailscale serve reset`）。
 
    - 第一次執行如果出現一個網址、說功能還沒開啟，用瀏覽器打開那個網址按啟用（會開啟 HTTPS 憑證），再執行一次同一個指令。
    - 成功後會顯示你的網址，例如 `https://your-mac.tail1234.ts.net`。
@@ -182,11 +199,15 @@ caffeinate -i npm start
 
 ### 自動備份
 
-網站每天會自動把 `inventory.json`、`watchlist.json`、`settings.json` 複製一份到 **iCloud 雲碟 › TCG助手備份**，每天一個以日期命名的資料夾（例如 `2026-11-02`），保留最近 30 天。沒有開 iCloud 雲碟時，會改存到「文件」資料夾。
+網站每天會自動把 `inventory.json`、`watchlist.json`、`settings.json` 複製一份到 **iCloud 雲碟 › TCG助手備份**，每天一個以日期命名的資料夾（例如 `2026-11-02`），保留最近 30 天。沒有開 iCloud 雲碟時，會改存到「文件」資料夾。Windows 上則存到 **OneDrive › TCG助手備份**（沒有 OneDrive 時同樣存到「文件」）。
 
 - 「⚙️ 設定」頁可以看到上次備份的時間，也可以按「💾 立即備份」。
 - 要還原時，把備份資料夾裡的檔案複製回 `backend/data/`，再執行 `./scripts/autostart.sh restart`。
 - 另外也可以在「賣場倉庫」頁按「⬇ 匯出 CSV」，用 Excel 開啟。
+
+### 換電腦（例如從 Mac 搬到 Windows）
+
+`backend/data/` 不在 git 裡，clone 下來是空的。把舊電腦的 `inventory.json`、`watchlist.json`、`settings.json`（或最新一份備份資料夾裡的同名檔案）複製到新電腦的 `backend/data/`，再執行 `install`（已在執行的話用 `restart`）。登入密碼不在這些檔案裡，要在新電腦重新設定一次。
 
 ---
 
@@ -205,6 +226,8 @@ frontend/
   vite.config.js   開發模式把 /api 轉給後端
 scripts/
   autostart.sh     設定 Mac 背景自動執行（launchd）
+  autostart.cmd    設定 Windows 背景自動執行（工作排程器；執行 autostart.ps1）
+  windows-service.js  Windows 背景執行時啟動網站、當掉重啟、寫 log
 ```
 
 ---

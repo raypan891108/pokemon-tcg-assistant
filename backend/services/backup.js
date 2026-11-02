@@ -7,10 +7,12 @@ const storage = require('./storage');
 const FILES = ['inventory.json', 'watchlist.json', 'settings.json'];
 const KEEP = 30;
 
-// iCloud Drive when it's set up (synced off this Mac), otherwise Documents
+// A synced cloud folder when there is one (iCloud Drive on a Mac, OneDrive on Windows), otherwise Documents
 function defaultBackupDir() {
-  const icloud = path.join(os.homedir(), 'Library/Mobile Documents/com~apple~CloudDocs');
-  return path.join(fs.existsSync(icloud) ? icloud : path.join(os.homedir(), 'Documents'), 'TCG助手備份');
+  const cloud = process.platform === 'win32'
+    ? process.env.OneDrive
+    : path.join(os.homedir(), 'Library/Mobile Documents/com~apple~CloudDocs');
+  return path.join(cloud && fs.existsSync(cloud) ? cloud : path.join(os.homedir(), 'Documents'), 'TCG助手備份');
 }
 
 const BACKUP_DIR = process.env.BACKUP_DIR || defaultBackupDir();

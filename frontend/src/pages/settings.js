@@ -240,8 +240,8 @@ function renderSettingsForm(settings) {
     const el = document.getElementById('backup-status');
     try {
       const s = await api.backupStatus();
-      // Show the iCloud Drive folder the way Finder names it
-      s.dir = s.dir.replace(/^.*\/com~apple~CloudDocs/, 'iCloud 雲碟');
+      // Show the iCloud Drive folder the way Finder names it, and OneDrive without the user folder
+      s.dir = s.dir.replace(/^.*\/com~apple~CloudDocs/, 'iCloud 雲碟').replace(/^.*\\OneDrive(?=\\)/, 'OneDrive');
       el.innerHTML = s.latest
         ? `上次備份：<strong>${new Date(s.latestAt || s.latest).toLocaleString('zh-TW')}</strong>（共 ${s.count} 份）<br><span class="text-muted">位置：${escHtml(s.dir)}</span>`
         : `還沒有備份，下次自動更新時會建立第一份<br><span class="text-muted">位置：${escHtml(s.dir)}</span>`;
