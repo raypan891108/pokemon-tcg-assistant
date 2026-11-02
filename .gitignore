@@ -5,8 +5,11 @@ frontend/dist/
 # Holds the Discord webhook URL — keep it out of version control
 backend/data/settings.json
 
-# Scraped data and caches, regenerated on every fetch.
-# inventory.json and watchlist.json are your own records and stay tracked.
+# Personal records (card costs, sale prices) — the repo is public
+backend/data/inventory.json
+backend/data/watchlist.json
+
+# Scraped data and caches, regenerated on every fetch
 backend/data/products.json
 backend/data/events.json
 backend/data/tournaments.json

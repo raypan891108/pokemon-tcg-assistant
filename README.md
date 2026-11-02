@@ -163,17 +163,21 @@ APP_PASSWORD='你的密碼' ./scripts/autostart.sh install
 
 資料都存在 `backend/data/`（JSON 格式）：
 
-| 檔案 | 內容 | 放進 git |
-|---|---|---|
-| `inventory.json` | 賣場倉庫 | ✅ |
-| `watchlist.json` | 卡牌市場追蹤清單與價格紀錄 | ✅ |
-| `settings.json` | 使用者設定（含 Discord Webhook） | ❌ 避免外洩 |
-| `products.json`、`events.json`、`tournaments.json`、`last_fetch.json`、`decks.json` | 抓取的資料與快取 | ❌ 每次會重新抓 |
+| 檔案 | 內容 |
+|---|---|
+| `inventory.json` | 賣場倉庫（成本、成交價） |
+| `watchlist.json` | 卡牌市場追蹤清單與價格紀錄 |
+| `settings.json` | 使用者設定（含 Discord Webhook） |
+| `products.json`、`events.json`、`tournaments.json`、`last_fetch.json`、`decks.json` | 抓取的資料與快取，每次會重新抓 |
 
-倉庫紀錄只存在這台 Mac 上，新增或賣出卡片後建議 commit 一次當作備份：
+這個 repo 是公開的，所以 `backend/data/` 裡的檔案**都不會放進 git**，倉庫紀錄只存在這台 Mac 上。請用下列任一種方式備份：
+
+- **Time Machine**：有開的話會自動備份整個專案資料夾。
+- **匯出 CSV**：在「賣場倉庫」頁按「⬇ 匯出 CSV」。
+- **複製到 iCloud 雲碟**（會建立一個以日期命名的資料夾）：
 
 ```bash
-git add backend/data && git commit -m "更新倉庫紀錄"
+cp -R backend/data "$HOME/Library/Mobile Documents/com~apple~CloudDocs/TCG備份-$(date +%Y%m%d)"
 ```
 
 ---
