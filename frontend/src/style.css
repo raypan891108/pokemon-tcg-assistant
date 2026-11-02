@@ -1228,3 +1228,62 @@ body {
   .deck-row-head { grid-template-columns: 28px 48px minmax(0, 1fr); }
   .deck-row-head .deck-share { grid-column: 2 / -1; }
 }
+
+/* ═══ Mobile top bar and menu drawer ═══ */
+
+.mobile-topbar,
+.sidebar-backdrop { display: none; }
+
+.menu-toggle {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 20px;
+  cursor: pointer;
+}
+.menu-toggle:hover { border-color: var(--border-hover); }
+
+.mobile-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    padding: 0 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    z-index: 90;
+  }
+
+  .main-content { padding-top: 56px; }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 5, 15, 0.6);
+    z-index: 99;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-slow);
+  }
+  .sidebar-backdrop.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

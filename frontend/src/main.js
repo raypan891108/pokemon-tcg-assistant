@@ -34,9 +34,33 @@ export async function navigate(page) {
     el.classList.toggle('active', el.dataset.page === page);
   });
 
+  // Phone widths: show the page name in the top bar and close the menu drawer
+  const label = document.querySelector(`.nav-item[data-page="${page}"] .nav-label`);
+  if (label) document.getElementById('mobile-title').textContent = label.textContent;
+  setMenuOpen(false);
+
   const main = document.getElementById('main-content');
   await PAGES[page](main);
 }
+
+// ─── Mobile menu ─────────────────────────────────────────────
+// At phone widths the sidebar sits off-screen; .open slides it in (see style.css)
+function setMenuOpen(open) {
+  const sidebar = document.getElementById('sidebar');
+  const toggle = document.getElementById('menu-toggle');
+  sidebar.classList.toggle('open', open);
+  document.getElementById('sidebar-backdrop').classList.toggle('visible', open);
+  toggle.setAttribute('aria-expanded', String(open));
+  toggle.setAttribute('aria-label', open ? '關閉選單' : '開啟選單');
+}
+
+document.getElementById('menu-toggle').addEventListener('click', () => {
+  setMenuOpen(!document.getElementById('sidebar').classList.contains('open'));
+});
+document.getElementById('sidebar-backdrop').addEventListener('click', () => setMenuOpen(false));
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') setMenuOpen(false);
+});
 
 // ─── Sidebar Navigation ──────────────────────────────────────
 document.querySelectorAll('.nav-item').forEach(el => {
