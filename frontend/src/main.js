@@ -141,13 +141,33 @@ async function checkHealth() {
   const dot = document.querySelector('.status-dot');
   const text = document.querySelector('.status-text');
   try {
-    await api.health();
+    const { build } = await api.health();
     dot.className = 'status-dot';
     text.textContent = '已連線';
+    checkBuild(build);
   } catch {
     dot.className = 'status-dot error';
     text.textContent = '後端離線';
   }
+}
+
+// ─── New version notice ──────────────────────────────────────
+// The built script this page is running (index-<hash>.js); null in dev, where Vite serves sources.
+// Navigating inside the app never reloads it, so a page left open keeps running old code.
+const runningBuild = (document.querySelector('script[type="module"][src*="/assets/index-"]')
+  ?.getAttribute('src') || '').split('/').pop() || null;
+
+function checkBuild(serverBuild) {
+  if (!runningBuild || !serverBuild || serverBuild === runningBuild) return;
+  if (document.getElementById('update-banner')) return;
+  // Not reloaded automatically: the user may be in the middle of typing something
+  const banner = document.createElement('div');
+  banner.id = 'update-banner';
+  banner.className = 'update-banner';
+  banner.setAttribute('role', 'status');
+  banner.innerHTML = `<span>🆕 網站已更新</span><button class="btn-primary btn-sm" type="button">點此重新整理</button>`;
+  banner.querySelector('button').addEventListener('click', () => window.location.reload());
+  document.body.appendChild(banner);
 }
 
 // ─── Hourly update status ────────────────────────────────────
@@ -246,4 +266,12 @@ window.addEventListener('auth-required', showLogin);
 
   // Periodic health and update check
   setInterval(() => { checkHealth(); checkUpdates(); }, 30000);
+
+  // Phones pause timers in background tabs: check right away when the page is shown again
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      checkHealth();
+      checkUpdates();
+    }
+  });
 })();

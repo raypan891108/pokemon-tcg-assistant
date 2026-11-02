@@ -22,6 +22,8 @@ export async function renderDashboard(container) {
         <div>
           <div class="section-title">即將截止報名</div>
           <div id="urgency-container"></div>
+          <div class="section-title" style="margin-top:28px">即將舉辦的比賽</div>
+          <div id="tournament-list-container"></div>
         </div>
       </div>
     </div>`;
@@ -35,8 +37,9 @@ export async function renderDashboard(container) {
     ]);
 
     renderStats(stats, products);
-    renderTimeline(products, events, tournaments);
+    renderTimeline(products, events);
     renderUrgency(tournaments);
+    renderUpcomingTournaments(tournaments);
 
     document.getElementById('dashboard-cols').style.display = 'grid';
   } catch (e) {
@@ -84,12 +87,12 @@ function renderStats(stats, products) {
     </div>`;
 }
 
-function renderTimeline(products, events, tournaments) {
+// Products and events only; tournaments have their own panel in the right column
+function renderTimeline(products, events) {
   // Combine and sort by date added or release
   const items = [
     ...products.slice(0, 5).map(p => ({ ...p, _type: 'product', _sortDate: p.addedAt || p.releaseDate })),
     ...events.slice(0, 5).map(e => ({ ...e, _type: 'event', _sortDate: e.addedAt || e.date })),
-    ...tournaments.slice(0, 5).map(t => ({ ...t, _type: 'tournament', _sortDate: t.addedAt || t.date })),
   ].sort((a, b) => new Date(b._sortDate || 0) - new Date(a._sortDate || 0)).slice(0, 10);
 
   if (items.length === 0) {
@@ -102,8 +105,8 @@ function renderTimeline(products, events, tournaments) {
     return;
   }
 
-  const typeIcons = { product: '📦', event: '🎉', tournament: '🏆' };
-  const typeLabels = { product: '新商品', event: '活動', tournament: '比賽' };
+  const typeIcons = { product: '📦', event: '🎉' };
+  const typeLabels = { product: '新商品', event: '活動' };
 
   document.getElementById('timeline-container').innerHTML = `
     <div class="panel">
@@ -162,7 +165,7 @@ function renderUrgency(tournaments) {
             </div>
             <div class="deadline-badge ${cls}">⏰ ${deadlineText(t.deadline)}</div>
             <div id="countdown-${i}"></div>
-            ${t.registrationUrl ? `<a href="${t.registrationUrl}" target="_blank" rel="noopener" class="btn-primary" style="margin-top:8px;font-size:12px">立即報名 →</a>` : ''}
+            ${t.registrationUrl ? `<a href="${escHtml(t.registrationUrl)}" target="_blank" rel="noopener" class="btn-primary" style="margin-top:8px;font-size:12px">立即報名 →</a>` : ''}
           </div>`;
       }).join('')}
     </div>`;
@@ -175,4 +178,52 @@ function renderUrgency(tournaments) {
       if (interval) countdownIntervals.push(interval);
     }
   });
+}
+
+const UPCOMING_LIMIT = 5;
+
+// Tournaments by date (undated last), with their registration status
+function renderUpcomingTournaments(tournaments) {
+  const container = document.getElementById('tournament-list-container');
+  const list = [...tournaments]
+    .sort((a, b) => new Date(a.date || '9999') - new Date(b.date || '9999'))
+    .slice(0, UPCOMING_LIMIT);
+
+  if (list.length === 0) {
+    container.innerHTML = `
+      <div class="panel">
+        <div class="empty-state" style="padding:32px 0">
+          <div class="empty-icon">🏆</div>
+          <div class="empty-title">目前沒有即將舉辦的比賽</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const now = Date.now();
+  const status = (t) => {
+    if (!t.deadline) return '';
+    const left = new Date(t.deadline) - now;
+    return left > 0
+      ? `<span class="deadline-badge ${deadlineClass(t.deadline)} tournament-status">報名中・${deadlineText(t.deadline)}</span>`
+      : '<span class="tournament-status text-muted">報名已截止</span>';
+  };
+
+  container.innerHTML = `
+    <div class="panel tournament-list">
+      ${list.map(t => {
+        const link = t.registrationUrl || t.url;
+        const body = `
+          <div class="tournament-row-name">🏆 ${escHtml(t.name)}</div>
+          <div class="tournament-row-meta">
+            <span>📅 ${t.date ? formatDate(t.date) : '日期待公佈'}</span>
+            <span class="item-region region-${t.region}">${regionLabel(t.region)}</span>
+            ${status(t)}
+          </div>`;
+        return link
+          ? `<a class="tournament-row" href="${escHtml(link)}" target="_blank" rel="noopener">${body}</a>`
+          : `<div class="tournament-row">${body}</div>`;
+      }).join('')}
+      <button class="panel-link tournament-list-more" type="button" onclick="navigate('tournaments')">查看全部比賽 →</button>
+    </div>`;
 }

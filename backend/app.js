@@ -38,8 +38,20 @@ const notFound = (res, message) => {
 
 // ─── Public routes ───────────────────────────────────────────
 
+// Name of the built main script (index-<hash>.js): it changes whenever the frontend code does,
+// so open pages can tell they're running an older version. Read per request because
+// `autostart.sh restart` rebuilds the files while this process keeps running.
+function currentBuild() {
+  try {
+    const html = fs.readFileSync(path.join(FRONTEND_DIST, 'index.html'), 'utf8');
+    return (html.match(/\/assets\/(index-[\w-]+\.js)/) || [])[1] || null;
+  } catch {
+    return null;
+  }
+}
+
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', build: currentBuild(), timestamp: new Date().toISOString() });
 });
 
 app.get('/api/auth/status', auth.status);
@@ -182,8 +194,18 @@ app.post('/api/notify/test', handle(async () => ({ success: await notifier.sendT
 
 // ─── Frontend ────────────────────────────────────────────────
 if (fs.existsSync(FRONTEND_DIST)) {
-  app.use(express.static(FRONTEND_DIST));
-  app.get(/^(?!\/api\/).*/, (req, res) => res.sendFile(path.join(FRONTEND_DIST, 'index.html')));
+  app.use(express.static(FRONTEND_DIST, {
+    setHeaders(res, filePath) {
+      // Hashed assets never change under the same name; the page must always be revalidated
+      res.setHeader('Cache-Control', filePath.includes(`${path.sep}assets${path.sep}`)
+        ? 'public, max-age=31536000, immutable'
+        : 'no-cache');
+    },
+  }));
+  app.get(/^(?!\/api\/).*/, (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(path.join(FRONTEND_DIST, 'index.html'));
+  });
 }
 
 module.exports = app;
