@@ -20,7 +20,7 @@
 
 ## 快速啟動
 
-需要 Node.js 20 以上。
+需要 Node.js 22.12 以上，建議使用 [nodejs.org](https://nodejs.org) 上標示 LTS 的版本。升級 Node.js 後要再執行一次 `npm install` 和 `./scripts/autostart.sh install`。
 
 ### 第一次：安裝套件
 

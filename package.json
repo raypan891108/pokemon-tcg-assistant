@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "Pokemon TCG 資訊助手 — 自動追蹤台灣、日本、美國的 TCG 活動、商品與賽事",
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
     "start": "npm run build --workspace=frontend && npm run start --workspace=backend",
     "dev": "concurrently --names \"後端,前端\" --prefix-colors \"yellow,cyan\" \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\""
@@ -12,6 +15,6 @@
     "frontend"
   ],
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^10.0.6"
   }
 }
