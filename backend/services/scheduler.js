@@ -8,6 +8,8 @@ const jpScraper = require('../scrapers/jp-scraper');
 const usScraper = require('../scrapers/us-scraper');
 
 const SCRAPERS = { tw: twScraper, jp: jpScraper, us: usScraper };
+// Each scraper's function per kind of data
+const SCRAPE_METHODS = { products: 'scrapeProducts', events: 'scrapeEvents', tournaments: 'scrapeTournaments' };
 
 let isRunning = false;
 let scheduledJob = null;
@@ -40,6 +42,25 @@ function nextRunAt(hours, now = new Date()) {
   return next.toISOString();
 }
 
+// A run that errors or finds nothing counts as failed: a scraper whose page layout changed
+// usually returns an empty list rather than an error. Regions no longer fetched are dropped.
+async function updateSources(sourceResults) {
+  const prev = await storage.getSources();
+  const now = new Date().toISOString();
+  const next = {};
+  for (const [key, { count, error }] of Object.entries(sourceResults)) {
+    const ok = !error && count > 0;
+    next[key] = {
+      count,
+      error,
+      lastRunAt: now,
+      lastSuccessAt: ok ? now : prev[key]?.lastSuccessAt || null,
+      failStreak: ok ? 0 : (prev[key]?.failStreak || 0) + 1,
+    };
+  }
+  await storage.saveSources(next);
+}
+
 async function runFetch() {
   const results = { products: [], events: [], tournaments: [], errors: [] };
   const fetched = [];
@@ -50,18 +71,25 @@ async function runFetch() {
   const settings = await storage.getSettings();
   const regions = (settings.regions || ['tw', 'jp', 'us']).filter(r => SCRAPERS[r]);
 
-  // Fetch from all regions in parallel
+  // Fetch from all regions in parallel, noting how each source did
+  const sourceResults = {};
   const tasks = regions.flatMap(region => {
     const scraper = SCRAPERS[region];
     const label = region.toUpperCase();
-    return [
-      scraper.scrapeProducts().then(r => { results.products.push(...r); fetched.push(`${region}-products`); }).catch(e => results.errors.push(`${label} products: ${e.message}`)),
-      scraper.scrapeEvents().then(r => { results.events.push(...r); }).catch(e => results.errors.push(`${label} events: ${e.message}`)),
-      scraper.scrapeTournaments().then(r => { results.tournaments.push(...r); }).catch(e => results.errors.push(`${label} tournaments: ${e.message}`)),
-    ];
+    return Object.entries(SCRAPE_METHODS).map(([kind, method]) => {
+      return scraper[method]().then(items => {
+        results[kind].push(...items);
+        if (kind === 'products') fetched.push(`${region}-products`);
+        sourceResults[`${region}-${kind}`] = { count: items.length, error: null };
+      }, e => {
+        results.errors.push(`${label} ${kind}: ${e.message}`);
+        sourceResults[`${region}-${kind}`] = { count: 0, error: e.message };
+      });
+    });
   });
 
   await Promise.allSettled(tasks);
+  await updateSources(sourceResults);
 
   // Save to storage and get newly added items
   const [newProducts, newEvents, newTournaments] = await Promise.all([
@@ -153,6 +181,7 @@ async function getStatus() {
       errors: lastRun.errors?.length || 0,
     },
     lastFetch,
+    sources: await storage.getSources(),
   };
 }
 

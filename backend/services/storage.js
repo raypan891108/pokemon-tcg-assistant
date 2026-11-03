@@ -16,6 +16,7 @@ const FILE_NAMES = {
   reminders: 'reminders.json',
   releaseReminders: 'release_reminders.json',
   cardNames: 'card_names.json',
+  sources: 'sources.json',
 };
 
 // Default settings
@@ -42,9 +43,33 @@ async function read(doc, defaultValue) {
   return JSON.parse(await fs.promises.readFile(filePath, 'utf-8'));
 }
 
+// Windows refuses to replace a file another program (antivirus, backup) briefly has open
+async function renameWithRetry(from, to) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fs.promises.rename(from, to);
+    } catch (e) {
+      if (!['EPERM', 'EBUSY', 'EACCES'].includes(e.code) || attempt >= 5) throw e;
+      await new Promise(resolve => setTimeout(resolve, 50 * attempt));
+    }
+  }
+}
+
+let tmpCounter = 0;
+
+// Written to a temporary file and then swapped in, so a crash or power cut mid-write
+// leaves the previous file intact instead of half a JSON document
 async function write(doc, value) {
   await fs.promises.mkdir(DATA_DIR, { recursive: true });
-  await fs.promises.writeFile(path.join(DATA_DIR, FILE_NAMES[doc]), JSON.stringify(value, null, 2), 'utf-8');
+  const filePath = path.join(DATA_DIR, FILE_NAMES[doc]);
+  const tmpPath = `${filePath}.${process.pid}-${++tmpCounter}.tmp`;
+  try {
+    await fs.promises.writeFile(tmpPath, JSON.stringify(value, null, 2), 'utf-8');
+    await renameWithRetry(tmpPath, filePath);
+  } catch (e) {
+    await fs.promises.rm(tmpPath, { force: true });
+    throw e;
+  }
 }
 
 // Merge new items with existing, deduplicated by id
@@ -93,6 +118,9 @@ module.exports = {
   getSettings: async () => ({ ...DEFAULT_SETTINGS, ...await read('settings', {}) }),
   saveSettings: (settings) => write('settings', settings),
   getLastFetch: () => read('lastFetch', {}),
+  // Health of each scraper source: { "<region>-<kind>": { count, error, lastRunAt, lastSuccessAt, failStreak } }
+  getSources: () => read('sources', {}),
+  saveSources: (data) => write('sources', data),
 
   saveProducts: (newItems) => mergeAndSave('products', newItems),
   saveEvents: (newItems) => mergeAndSave('events', newItems),

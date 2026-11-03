@@ -40,37 +40,34 @@ function absoluteUrl(url) {
   return url.startsWith('http') ? url : BASE_URL + url;
 }
 
+// Failures are thrown so the scheduler can show which source is broken
 async function scrapeProducts() {
   const products = [];
-  try {
-    const $ = await fetchPage(`${HOME_URL}products/`);
+  const $ = await fetchPage(`${HOME_URL}products/`);
 
-    // Tabs: 擴充包 / 構築牌組 / 其他商品 / 周邊道具 — the last one (sleeves, deck boxes) is skipped
-    const tabTypes = ['擴充包', '構築組', null];
-    $('.products-container').slice(0, tabTypes.length).each((tab, container) => {
-      $(container).find('li.products-item').slice(0, MAX_PRODUCTS_PER_TAB).each((_, el) => {
-        const name = $(el).find('.products-item-detail .name').text().replace(/\s+/g, ' ').trim();
-        const url = $(el).find('.products-item-image a').attr('href');
-        const imageUrl = $(el).find('img').attr('src');
-        if (!name) return;
+  // Tabs: 擴充包 / 構築牌組 / 其他商品 / 周邊道具 — the last one (sleeves, deck boxes) is skipped
+  const tabTypes = ['擴充包', '構築組', null];
+  $('.products-container').slice(0, tabTypes.length).each((tab, container) => {
+    $(container).find('li.products-item').slice(0, MAX_PRODUCTS_PER_TAB).each((_, el) => {
+      const name = $(el).find('.products-item-detail .name').text().replace(/\s+/g, ' ').trim();
+      const url = $(el).find('.products-item-image a').attr('href');
+      const imageUrl = $(el).find('img').attr('src');
+      if (!name) return;
 
-        products.push({
-          id: generateId(($(el).attr('id') || name) + 'tw-product', REGION),
-          name,
-          region: REGION,
-          type: tabTypes[tab] || detectProductType(name),
-          imageUrl: absoluteUrl(imageUrl),
-          url: absoluteUrl(url),
-          // The products page doesn't show release dates
-          releaseDate: parseDate(name),
-          description: '',
-          source: 'tw-official',
-        });
+      products.push({
+        id: generateId(($(el).attr('id') || name) + 'tw-product', REGION),
+        name,
+        region: REGION,
+        type: tabTypes[tab] || detectProductType(name),
+        imageUrl: absoluteUrl(imageUrl),
+        url: absoluteUrl(url),
+        // The products page doesn't show release dates
+        releaseDate: parseDate(name),
+        description: '',
+        source: 'tw-official',
       });
     });
-  } catch (e) {
-    console.error('[TW Scraper] Products error:', e.message);
-  }
+  });
 
   // The products page has no release dates; product news titles often do, e.g.
   // 擴充包「綠寶石風暴」將於8月7日（五）發售！ — match on the 「」 name including the brackets,
@@ -135,22 +132,18 @@ function isTournament(name) {
 
 async function scrapeEvents() {
   const events = [];
-  try {
-    for (const { name, url } of await scrapeHomeNews('Event')) {
-      if (isTournament(name)) continue;
-      events.push({
-        id: generateId(url + 'tw-event', REGION),
-        name,
-        region: REGION,
-        date: parseDate(name),
-        location: '台灣',
-        url,
-        description: '',
-        source: 'tw-official',
-      });
-    }
-  } catch (e) {
-    console.error('[TW Scraper] Events error:', e.message);
+  for (const { name, url } of await scrapeHomeNews('Event')) {
+    if (isTournament(name)) continue;
+    events.push({
+      id: generateId(url + 'tw-event', REGION),
+      name,
+      region: REGION,
+      date: parseDate(name),
+      location: '台灣',
+      url,
+      description: '',
+      source: 'tw-official',
+    });
   }
   return events;
 }
@@ -208,12 +201,15 @@ async function scrapeEntryTournaments() {
   });
 }
 
+// Two sources: thrown only when both fail, otherwise logged
 async function scrapeTournaments() {
   const tournaments = [];
+  const errors = [];
   try {
     tournaments.push(...await scrapeEntryTournaments());
   } catch (e) {
     console.error('[TW Scraper] Tournament entry API error:', e.message);
+    errors.push(`報名 API：${e.message}`);
   }
   try {
     for (const { name, url } of await scrapeHomeNews('Event')) {
@@ -235,7 +231,9 @@ async function scrapeTournaments() {
     }
   } catch (e) {
     console.error('[TW Scraper] Tournaments error:', e.message);
+    errors.push(`首頁消息：${e.message}`);
   }
+  if (errors.length === 2) throw new Error(errors.join('；'));
   return tournaments;
 }
 

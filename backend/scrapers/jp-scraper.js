@@ -55,8 +55,11 @@ function productKey(title) {
   return (m ? m[1] : title).replace(/\s+/g, '');
 }
 
+// Several sources: thrown only when all of them fail, otherwise logged.
+// Single-source scrapers below just throw, so the scheduler can show which source is broken.
 async function scrapeProducts() {
   const products = new Map();
+  const errors = [];
 
   // Products announced in the news, often before they reach the catalogue
   let announced = [];
@@ -67,6 +70,7 @@ async function scrapeProducts() {
       .map(item => ({ ...item, key: productKey(item.name) }));
   } catch (e) {
     console.error('[JP Scraper] Product news error:', e.message);
+    errors.push(`新聞：${e.message}`);
   }
 
   for (const [type, label] of Object.entries(PRODUCT_TYPES)) {
@@ -90,6 +94,7 @@ async function scrapeProducts() {
       }
     } catch (e) {
       console.error(`[JP Scraper] Products (${type}) error:`, e.message);
+      errors.push(`${label}：${e.message}`);
     }
   }
 
@@ -108,60 +113,53 @@ async function scrapeProducts() {
     });
   }
 
+  if (errors.length === Object.keys(PRODUCT_TYPES).length + 1) throw new Error(errors.join('；'));
   return [...products.values()];
 }
 
 async function scrapeEvents() {
   const events = [];
-  try {
-    for (const { name, dateText, url, href } of await scrapeNewsList('イベント')) {
-      events.push({
-        id: generateId(href + 'jp-event'),
-        name,
-        region: REGION,
-        // Prefer an event date written in the title over the publish date
-        date: parseJPDate(name) || parseJPDate(dateText),
-        location: '日本',
-        url,
-        description: '',
-        source: 'jp-official',
-      });
-    }
-  } catch (e) {
-    console.error('[JP Scraper] Events error:', e.message);
+  for (const { name, dateText, url, href } of await scrapeNewsList('イベント')) {
+    events.push({
+      id: generateId(href + 'jp-event'),
+      name,
+      region: REGION,
+      // Prefer an event date written in the title over the publish date
+      date: parseJPDate(name) || parseJPDate(dateText),
+      location: '日本',
+      url,
+      description: '',
+      source: 'jp-official',
+    });
   }
   return events;
 }
 
 async function scrapeTournaments() {
   const tournaments = [];
-  try {
-    const $ = await fetchPage(`${BASE_URL}/event/tournament/`);
+  const $ = await fetchPage(`${BASE_URL}/event/tournament/`);
 
-    $('li, article, [class*="tournament"], [class*="battle"]').each((_, el) => {
-      const name = $(el).find('a, h3, h2, .title').first().text().trim();
-      const dateText = $(el).find('time, .date, [class*="date"]').text().trim();
-      const deadlineText = $(el).find('[class*="entry"], [class*="deadline"]').text().trim();
-      const url = $(el).find('a').attr('href');
+  $('li, article, [class*="tournament"], [class*="battle"]').each((_, el) => {
+    const name = $(el).find('a, h3, h2, .title').first().text().trim();
+    const dateText = $(el).find('time, .date, [class*="date"]').text().trim();
+    const deadlineText = $(el).find('[class*="entry"], [class*="deadline"]').text().trim();
+    const url = $(el).find('a').attr('href');
 
-      if (name && name.length > 3) {
-        tournaments.push({
-          id: generateId(name + dateText + 'jp-tournament'),
-          name,
-          region: REGION,
-          date: parseJPDate(dateText) || parseJPDate(name),
-          deadline: parseJPDate(deadlineText),
-          location: '日本',
-          registrationUrl: absoluteUrl(url),
-          url: absoluteUrl(url),
-          description: '',
-          source: 'jp-official',
-        });
-      }
-    });
-  } catch (e) {
-    console.error('[JP Scraper] Tournaments error:', e.message);
-  }
+    if (name && name.length > 3) {
+      tournaments.push({
+        id: generateId(name + dateText + 'jp-tournament'),
+        name,
+        region: REGION,
+        date: parseJPDate(dateText) || parseJPDate(name),
+        deadline: parseJPDate(deadlineText),
+        location: '日本',
+        registrationUrl: absoluteUrl(url),
+        url: absoluteUrl(url),
+        description: '',
+        source: 'jp-official',
+      });
+    }
+  });
   return tournaments;
 }
 

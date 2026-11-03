@@ -20,103 +20,92 @@ function generateId(text) {
   return `us-${crypto.createHash('sha1').update(text).digest('hex').substring(0, 16)}`;
 }
 
+// Failures are thrown so the scheduler can show which source is broken
 async function scrapeProducts() {
   const products = [];
-  try {
-    const $ = await fetchPage(`${BASE_URL}/us/pokemon-tcg/pokemon-cards/`);
+  const $ = await fetchPage(`${BASE_URL}/us/pokemon-tcg/pokemon-cards/`);
 
-    $('[class*="product"], [class*="card-set"], article').each((_, el) => {
-      const name = $(el).find('h2, h3, .title, a').first().text().trim();
-      const imageUrl = $(el).find('img').attr('src') || $(el).find('img').attr('data-src');
-      const url = $(el).find('a').attr('href');
-      const dateText = $(el).find('[class*="date"], time').text().trim();
+  $('[class*="product"], [class*="card-set"], article').each((_, el) => {
+    const name = $(el).find('h2, h3, .title, a').first().text().trim();
+    const imageUrl = $(el).find('img').attr('src') || $(el).find('img').attr('data-src');
+    const url = $(el).find('a').attr('href');
+    const dateText = $(el).find('[class*="date"], time').text().trim();
 
-      if (name && name.length > 3) {
-        products.push({
-          id: generateId(name + 'us-product'),
-          name,
-          region: REGION,
-          type: detectUSType(name),
-          imageUrl: imageUrl ? (imageUrl.startsWith('http') ? imageUrl : BASE_URL + imageUrl) : null,
-          url: url ? (url.startsWith('http') ? url : BASE_URL + url) : null,
-          releaseDate: parseDate(dateText),
-          description: '',
-          source: 'us-official',
-        });
-      }
-    });
-  } catch (e) {
-    console.error('[US Scraper] Products error:', e.message);
-  }
+    if (name && name.length > 3) {
+      products.push({
+        id: generateId(name + 'us-product'),
+        name,
+        region: REGION,
+        type: detectUSType(name),
+        imageUrl: imageUrl ? (imageUrl.startsWith('http') ? imageUrl : BASE_URL + imageUrl) : null,
+        url: url ? (url.startsWith('http') ? url : BASE_URL + url) : null,
+        releaseDate: parseDate(dateText),
+        description: '',
+        source: 'us-official',
+      });
+    }
+  });
 
   return products;
 }
 
 async function scrapeEvents() {
   const events = [];
-  try {
-    // Try Play! Pokemon events API
-    const { data } = await axios.get('https://www.pokemon.com/us/play-pokemon/pokemon-events/find-an-event/', {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      timeout: 15000,
-    });
-    const $ = cheerio.load(data);
+  // Try Play! Pokemon events API
+  const { data } = await axios.get('https://www.pokemon.com/us/play-pokemon/pokemon-events/find-an-event/', {
+    headers: { 'User-Agent': 'Mozilla/5.0' },
+    timeout: 15000,
+  });
+  const $ = cheerio.load(data);
 
-    $('[class*="event"], article, li').each((_, el) => {
-      const name = $(el).find('h2, h3, a, .title').first().text().trim();
-      const dateText = $(el).find('time, [class*="date"]').text().trim();
-      const location = $(el).find('[class*="location"], address').text().trim();
-      const url = $(el).find('a').attr('href');
+  $('[class*="event"], article, li').each((_, el) => {
+    const name = $(el).find('h2, h3, a, .title').first().text().trim();
+    const dateText = $(el).find('time, [class*="date"]').text().trim();
+    const location = $(el).find('[class*="location"], address').text().trim();
+    const url = $(el).find('a').attr('href');
 
-      if (name && name.length > 3) {
-        events.push({
-          id: generateId(name + dateText + 'us-event'),
-          name,
-          region: REGION,
-          date: parseDate(dateText),
-          location: location || 'United States',
-          url: url ? (url.startsWith('http') ? url : BASE_URL + url) : null,
-          description: '',
-          source: 'us-official',
-        });
-      }
-    });
-  } catch (e) {
-    console.error('[US Scraper] Events error:', e.message);
-  }
+    if (name && name.length > 3) {
+      events.push({
+        id: generateId(name + dateText + 'us-event'),
+        name,
+        region: REGION,
+        date: parseDate(dateText),
+        location: location || 'United States',
+        url: url ? (url.startsWith('http') ? url : BASE_URL + url) : null,
+        description: '',
+        source: 'us-official',
+      });
+    }
+  });
   return events;
 }
 
 async function scrapeTournaments() {
   const tournaments = [];
-  try {
-    const $ = await fetchPage('https://www.pokemon.com/us/play-pokemon/tournaments/');
+  const $ = await fetchPage('https://www.pokemon.com/us/play-pokemon/tournaments/');
 
-    $('[class*="tournament"], [class*="championship"], article').each((_, el) => {
-      const name = $(el).find('h2, h3, a, .title').first().text().trim();
-      const dateText = $(el).find('time, [class*="date"]').text().trim();
-      const deadlineText = $(el).find('[class*="deadline"], [class*="register"]').text().trim();
-      const location = $(el).find('[class*="location"], address').text().trim();
-      const url = $(el).find('a').attr('href');
+  $('[class*="tournament"], [class*="championship"], article').each((_, el) => {
+    const name = $(el).find('h2, h3, a, .title').first().text().trim();
+    const dateText = $(el).find('time, [class*="date"]').text().trim();
+    const deadlineText = $(el).find('[class*="deadline"], [class*="register"]').text().trim();
+    const location = $(el).find('[class*="location"], address').text().trim();
+    const url = $(el).find('a').attr('href');
 
-      if (name && name.length > 3) {
-        tournaments.push({
-          id: generateId(name + dateText + 'us-tournament'),
-          name,
-          region: REGION,
-          date: parseDate(dateText),
-          deadline: parseDate(deadlineText),
-          location: location || 'United States',
-          registrationUrl: url ? (url.startsWith('http') ? url : BASE_URL + url) : null,
-          url: url ? (url.startsWith('http') ? url : BASE_URL + url) : null,
-          description: '',
-          source: 'us-official',
-        });
-      }
-    });
-  } catch (e) {
-    console.error('[US Scraper] Tournaments error:', e.message);
-  }
+    if (name && name.length > 3) {
+      tournaments.push({
+        id: generateId(name + dateText + 'us-tournament'),
+        name,
+        region: REGION,
+        date: parseDate(dateText),
+        deadline: parseDate(deadlineText),
+        location: location || 'United States',
+        registrationUrl: url ? (url.startsWith('http') ? url : BASE_URL + url) : null,
+        url: url ? (url.startsWith('http') ? url : BASE_URL + url) : null,
+        description: '',
+        source: 'us-official',
+      });
+    }
+  });
   return tournaments;
 }
 

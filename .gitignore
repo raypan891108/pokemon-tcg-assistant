@@ -19,3 +19,6 @@ backend/data/prices.json
 backend/data/reminders.json
 backend/data/release_reminders.json
 backend/data/card_names.json
+backend/data/sources.json
+# Left behind only if the site stops mid-save
+backend/data/*.tmp

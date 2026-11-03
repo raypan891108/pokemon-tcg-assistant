@@ -154,6 +154,13 @@ function renderSettingsForm(settings) {
       <button class="btn-primary" id="btn-save-seller" style="max-width:200px">💾 儲存賣場設定</button>
     </div>
 
+    <!-- Scraper health -->
+    <div class="settings-section">
+      <div class="settings-title">🩺 資料來源狀態</div>
+      <div class="form-hint" style="margin-bottom:12px">每次自動更新時各網站抓到幾筆資料。出錯或抓到 0 筆都算失敗，通常是對方網站改版或擋掉了連線</div>
+      <div id="sources-status" class="text-sm">載入中...</div>
+    </div>
+
     <!-- Calendar subscription -->
     <div class="settings-section">
       <div class="settings-title">📅 行事曆訂閱</div>
@@ -209,6 +216,12 @@ function renderSettingsForm(settings) {
       btn.disabled = false;
       btn.textContent = '🔔 測試通知';
     }
+  });
+
+  api.schedulerStatus().then(({ sources }) => {
+    document.getElementById('sources-status').innerHTML = renderSources(sources || {});
+  }).catch(e => {
+    document.getElementById('sources-status').textContent = `無法讀取資料來源狀態：${e.message}`;
   });
 
   api.calendarInfo().then(({ path }) => {
@@ -307,4 +320,37 @@ async function saveSettings(partial) {
   } catch (e) {
     showToast('儲存失敗，請確認後端已啟動', 'error');
   }
+}
+
+const SOURCE_REGIONS = { tw: '🇹🇼 台灣', jp: '🇯🇵 日本', us: '🇺🇸 美國' };
+const SOURCE_KINDS = { products: '商品', events: '活動', tournaments: '比賽' };
+
+function renderSources(sources) {
+  const keys = Object.keys(SOURCE_REGIONS).flatMap(r => Object.keys(SOURCE_KINDS).map(k => `${r}-${k}`))
+    .filter(key => sources[key]);
+  if (!keys.length) return '還沒有紀錄，下次自動更新後就會顯示';
+
+  const when = iso => iso ? new Date(iso).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '從未成功';
+  const rows = keys.map(key => {
+    const [region, kind] = key.split('-');
+    const s = sources[key];
+    const status = s.failStreak === 0
+      ? '<span class="price-change-up">✅ 正常</span>'
+      : `<span class="price-change-down">${s.error ? '❌ 錯誤' : '⚠️ 抓到 0 筆'}</span>${s.failStreak > 1 ? `<span class="text-muted">（連續 ${s.failStreak} 次）</span>` : ''}`;
+    return `
+      <tr>
+        <td>${SOURCE_REGIONS[region]} ${SOURCE_KINDS[kind]}</td>
+        <td class="num">${s.count}</td>
+        <td class="wrap">${status}${s.error ? `<div class="text-muted">${escHtml(s.error)}</div>` : ''}</td>
+        <td>${s.failStreak === 0 ? '—' : when(s.lastSuccessAt)}</td>
+      </tr>`;
+  }).join('');
+
+  return `
+    <div class="table-wrap">
+      <table class="price-table">
+        <thead><tr><th>來源</th><th class="num">筆數</th><th>狀態</th><th>最後成功</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }

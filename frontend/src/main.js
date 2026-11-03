@@ -25,8 +25,20 @@ const PAGES = {
 };
 
 // ─── Router ──────────────────────────────────────────────────
+// The page lives in the URL (#/inventory), so reloading keeps it, the back button
+// goes to the previous page and a page can be bookmarked or added to the home screen
+function pageFromHash() {
+  const page = location.hash.replace(/^#\/?/, '');
+  return PAGES[page] ? page : 'dashboard';
+}
+
 export async function navigate(page) {
   if (!PAGES[page]) return;
+  // Changing the hash renders the page through the hashchange listener below
+  if (location.hash !== `#/${page}`) {
+    location.hash = `/${page}`;
+    return;
+  }
   currentPage = page;
 
   // Update nav active state
@@ -183,9 +195,11 @@ async function checkUpdates({ quiet = false } = {}) {
   const el = document.getElementById('fetch-times');
   try {
     const status = await api.schedulerStatus();
+    // Three hourly runs in a row: not a passing hiccup (details on the settings page)
+    const broken = Object.values(status.sources || {}).filter(s => s.failStreak >= 3).length;
     el.textContent = status.running
       ? '正在抓取最新資料...'
-      : `上次更新 ${formatTime(status.lastRunAt)}${status.nextRunAt ? ` · 下次 ${formatTime(status.nextRunAt)}` : ''}`;
+      : `上次更新 ${formatTime(status.lastRunAt)}${status.nextRunAt ? ` · 下次 ${formatTime(status.nextRunAt)}` : ''}${broken ? ` · ⚠️ ${broken} 個來源異常` : ''}`;
 
     // A fetch finished since we last looked
     if (!quiet && seenRunAt && status.lastRunAt && status.lastRunAt !== seenRunAt && !status.running) {
@@ -259,8 +273,10 @@ window.addEventListener('auth-required', showLogin);
   // Load initial badges
   await updateBadges();
 
-  // Render default page
-  await navigate('dashboard');
+  // Render the page in the URL; an empty or unknown one becomes the dashboard without a history entry
+  window.addEventListener('hashchange', () => navigate(pageFromHash()));
+  history.replaceState(null, '', `#/${pageFromHash()}`);
+  await navigate(pageFromHash());
 
   await checkUpdates();
 
