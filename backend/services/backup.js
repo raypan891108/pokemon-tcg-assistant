@@ -4,7 +4,7 @@ const path = require('path');
 const storage = require('./storage');
 
 // Your own records; scraped data is re-fetched and doesn't need a backup
-const FILES = ['inventory.json', 'watchlist.json', 'settings.json'];
+const FILES = ['inventory.json', 'watchlist.json', 'settings.json', 'links.json'];
 const KEEP = 30;
 
 // A synced cloud folder when there is one (iCloud Drive on a Mac, OneDrive on Windows), otherwise Documents

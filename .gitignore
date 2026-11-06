@@ -8,6 +8,7 @@ backend/data/settings.json
 # Personal records (card costs, sale prices) — the repo is public
 backend/data/inventory.json
 backend/data/watchlist.json
+backend/data/links.json
 
 # Scraped data and caches, regenerated on every fetch
 backend/data/products.json

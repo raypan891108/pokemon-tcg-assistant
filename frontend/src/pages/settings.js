@@ -171,7 +171,7 @@ function renderSettingsForm(settings) {
     <!-- Backups -->
     <div class="settings-section">
       <div class="settings-title">💾 自動備份</div>
-      <div class="form-hint" style="margin-bottom:12px">每天自動把賣場倉庫、追蹤清單和設定複製一份，保留最近 30 天</div>
+      <div class="form-hint" style="margin-bottom:12px">每天自動把賣場倉庫、追蹤清單、相關網站和設定複製一份，保留最近 30 天</div>
       <div id="backup-status" class="text-sm" style="margin-bottom:12px;line-height:1.7">載入中...</div>
       <button class="btn-secondary" id="btn-backup-now">💾 立即備份</button>
     </div>

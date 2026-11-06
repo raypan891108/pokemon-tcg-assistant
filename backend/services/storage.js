@@ -18,6 +18,7 @@ const FILE_NAMES = {
   cardNames: 'card_names.json',
   sources: 'sources.json',
   geocode: 'geocode.json',
+  links: 'links.json',
 };
 
 // Default settings
@@ -125,6 +126,9 @@ module.exports = {
   // Map coordinates of tournament venues: { "<city>|<district>|<road>|<number>": { lat, lng, precision, at } }
   getGeocode: () => read('geocode', {}),
   saveGeocode: (data) => write('geocode', data),
+  // Your grouped website links (see links.js); null until first saved
+  getLinks: () => read('links', null),
+  saveLinks: (data) => write('links', data),
 
   saveProducts: (newItems) => mergeAndSave('products', newItems),
   saveEvents: (newItems) => mergeAndSave('events', newItems),

@@ -11,6 +11,7 @@ const decks = require('./services/decks');
 const backup = require('./services/backup');
 const calendar = require('./services/calendar');
 const geocode = require('./services/geocode');
+const links = require('./services/links');
 
 // The Express app; server.js starts it
 const app = express();
@@ -164,6 +165,11 @@ app.post('/api/market/refresh', handle(() => market.refreshWatchlist()));
 app.get('/api/decks', handle(req => decks.getMeta(req.query.format, req.query.refresh === 'true')));
 
 app.get('/api/decks/:id/list', handle(req => decks.getSampleList(req.params.id, req.query.format)));
+
+// Your grouped website links (相關網站 page), saved as a whole
+app.get('/api/links', handle(() => links.get()));
+
+app.put('/api/links', handle(req => links.save(req.body)));
 
 // Subscription path for the settings page (includes the token when a password is set)
 app.get('/api/calendar/info', handle(() => {

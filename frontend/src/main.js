@@ -8,6 +8,7 @@ import { renderTournaments } from './pages/tournaments.js';
 import { renderMarket } from './pages/market.js';
 import { renderInventory } from './pages/inventory.js';
 import { renderDecks } from './pages/decks.js';
+import { renderLinks } from './pages/links.js';
 import { renderSettings } from './pages/settings.js';
 
 // ─── State ───────────────────────────────────────────────────
@@ -21,6 +22,7 @@ const PAGES = {
   market: renderMarket,
   inventory: renderInventory,
   decks: renderDecks,
+  links: renderLinks,
   settings: renderSettings,
 };
 

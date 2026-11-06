@@ -66,4 +66,7 @@ export const api = {
 
   decks: (format, refresh) => get('/decks', { format, refresh }),
   deckList: (id, format) => get(`/decks/${id}/list`, { format }),
+
+  links: () => get('/links'),
+  saveLinks: (data) => put('/links', data),
 };

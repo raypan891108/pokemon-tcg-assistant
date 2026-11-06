@@ -1614,3 +1614,146 @@ a.tournament-row:hover { background: var(--bg-card-hover); }
 }
 
 .tournament-map a.map-popup-link:hover { text-decoration: underline; }
+
+/* ═══ 相關網站 ═══ */
+
+.links-header-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.links-group { margin-bottom: 28px; }
+
+.links-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.links-group-title { font-size: 17px; font-weight: 700; }
+
+.links-group-count {
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.links-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.link-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--transition), background var(--transition), transform var(--transition);
+}
+
+a.link-card:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+}
+
+.link-card.editing { border-style: dashed; }
+
+/* The site's favicon over its first letter; the letter shows when there's no icon */
+.link-icon {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.link-icon::before {
+  content: attr(data-letter);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.link-icon img {
+  position: absolute;
+  inset: 6px;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  background: var(--bg-elevated);
+  /* Hidden until it has loaded, so the letter shows meanwhile */
+  opacity: 0;
+}
+
+.link-icon img.loaded { opacity: 1; }
+
+.link-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+
+.link-name {
+  font-weight: 600;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link-host,
+.link-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link-note { color: var(--text-secondary); }
+
+.link-edit-actions { display: flex; flex: none; gap: 2px; }
+
+.icon-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.icon-btn:hover:not(:disabled) { background: var(--bg-elevated); color: var(--text-primary); }
+.icon-btn:disabled { opacity: 0.3; cursor: default; }
+
+.link-card.link-add {
+  justify-content: center;
+  border-style: dashed;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.link-card.link-add:hover { color: var(--gold); border-color: var(--border-hover); }
+
+@media (max-width: 768px) {
+  .links-grid { grid-template-columns: 1fr; }
+}
