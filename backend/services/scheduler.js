@@ -3,6 +3,7 @@ const storage = require('./storage');
 const notifier = require('./notifier');
 const market = require('./market');
 const backup = require('./backup');
+const geocode = require('./geocode');
 const twScraper = require('../scrapers/tw-scraper');
 const jpScraper = require('../scrapers/jp-scraper');
 const usScraper = require('../scrapers/us-scraper');
@@ -98,6 +99,9 @@ async function runFetch() {
     storage.saveTournaments(results.tournaments),
     storage.updateLastFetch(fetched),
   ]);
+
+  // Locate new tournament venues for the map; slow (one lookup a second), so not awaited
+  geocode.fillMissing().catch(e => console.error('[Geocode]', e.message));
 
   // Refresh 遊々亭 prices for watched cards
   try {

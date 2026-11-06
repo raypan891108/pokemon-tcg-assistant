@@ -10,6 +10,7 @@ const market = require('./services/market');
 const decks = require('./services/decks');
 const backup = require('./services/backup');
 const calendar = require('./services/calendar');
+const geocode = require('./services/geocode');
 
 // The Express app; server.js starts it
 const app = express();
@@ -113,7 +114,8 @@ app.get('/api/tournaments', handle(async req => {
     tournaments = tournaments.filter(t => !t.date || new Date(t.date) >= now);
   }
   tournaments.sort((a, b) => new Date(a.date || '9999') - new Date(b.date || '9999'));
-  return tournaments;
+  // Map coordinates of venues located so far (Taiwan only)
+  return geocode.attach(tournaments);
 }));
 
 // Inventory (卡拍拍 賣場倉庫)

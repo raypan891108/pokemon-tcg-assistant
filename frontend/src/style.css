@@ -1455,3 +1455,162 @@ a.tournament-row:hover { background: var(--bg-card-hover); }
   border: none;
   font-family: inherit;
 }
+
+/* ═══ 比賽地圖 ═══ */
+
+.map-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 20px;
+  scroll-margin-top: 16px;
+}
+
+.map-panel[hidden],
+.tournament-map[hidden] { display: none; }
+
+.map-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-bottom: 12px;
+}
+
+.map-panel-title { font-weight: 700; font-size: 16px; }
+.map-panel-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+.map-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.map-legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+.map-legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #6B6B90;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+}
+
+.map-legend-dot.open { background: var(--gold); }
+
+.tournament-map {
+  /* Keeps Leaflet's own z-indexes (up to 1000) inside the map, below the phone menu and dialogs */
+  position: relative;
+  z-index: 0;
+  height: 420px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-primary);
+  font-family: inherit;
+}
+
+@media (max-width: 768px) {
+  .tournament-map { height: 320px; }
+}
+
+/* Venue markers: gold while entries are open; dashed when only the district is known */
+.map-pin span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #6B6B90;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  transition: transform var(--transition);
+}
+
+.map-pin.open span { background: var(--gold); color: #1A1A35; }
+.map-pin.approximate span { border-style: dashed; }
+.map-pin:hover span { transform: scale(1.15); }
+
+.map-cluster span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(107, 107, 144, 0.9);
+  box-shadow: 0 0 0 6px rgba(107, 107, 144, 0.3);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.map-cluster.open span {
+  background: rgba(255, 215, 0, 0.92);
+  box-shadow: 0 0 0 6px rgba(255, 215, 0, 0.25);
+  color: #1A1A35;
+}
+
+/* Light map tiles turned dark: invert, then rotate the hues back so water stays blue */
+.tournament-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.6);
+}
+
+/* Leaflet's light popups and controls, restyled for the dark theme */
+.tournament-map .leaflet-popup-content-wrapper,
+.tournament-map .leaflet-popup-tip {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-card);
+}
+
+.tournament-map .leaflet-popup-content { margin: 14px 16px; font-size: 13px; line-height: 1.5; }
+.tournament-map .leaflet-popup-close-button { color: var(--text-muted); }
+
+.tournament-map .leaflet-bar a {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.tournament-map .leaflet-bar a:hover { background: var(--bg-card-hover); }
+
+.tournament-map .leaflet-control-attribution {
+  background: rgba(13, 13, 26, 0.75);
+  color: var(--text-muted);
+}
+
+.tournament-map .leaflet-control-attribution a { color: var(--text-secondary); }
+
+.map-popup-venue { font-weight: 700; margin-bottom: 6px; }
+.map-popup-note { font-size: 12px; color: #FFA500; margin-bottom: 6px; }
+.map-popup ul { list-style: none; margin: 0; padding: 0; }
+
+.map-popup-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-light);
+}
+
+.map-popup-name { font-weight: 600; }
+.map-popup-meta { color: var(--text-secondary); font-size: 12px; }
+.map-popup-item .deadline-badge { font-size: 11px; }
+
+.tournament-map a.map-popup-link {
+  color: var(--gold);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.tournament-map a.map-popup-link:hover { text-decoration: underline; }

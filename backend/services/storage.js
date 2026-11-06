@@ -17,6 +17,7 @@ const FILE_NAMES = {
   releaseReminders: 'release_reminders.json',
   cardNames: 'card_names.json',
   sources: 'sources.json',
+  geocode: 'geocode.json',
 };
 
 // Default settings
@@ -121,6 +122,9 @@ module.exports = {
   // Health of each scraper source: { "<region>-<kind>": { count, error, lastRunAt, lastSuccessAt, failStreak } }
   getSources: () => read('sources', {}),
   saveSources: (data) => write('sources', data),
+  // Map coordinates of tournament venues: { "<city>|<district>|<road>|<number>": { lat, lng, precision, at } }
+  getGeocode: () => read('geocode', {}),
+  saveGeocode: (data) => write('geocode', data),
 
   saveProducts: (newItems) => mergeAndSave('products', newItems),
   saveEvents: (newItems) => mergeAndSave('events', newItems),

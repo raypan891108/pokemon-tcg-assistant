@@ -10,7 +10,7 @@
 
 - 📦 **新商品追蹤** — 補充包、構築組、特別組合等發售資訊
 - 🎉 **活動資訊** — 各地 TCG 活動、展覽、特別賽事
-- 🏆 **比賽資訊** — 賽事公告、報名連結、截止日期倒數
+- 🏆 **比賽資訊** — 賽事公告、報名連結、截止日期倒數；台灣的比賽會標在互動地圖上，點地標就能看那個場地的比賽和報名連結
 - 📅 **行事曆訂閱** — 比賽、報名截止、新商品發售日同步到 iPhone 行事曆，到時間會跳提醒（設定頁 › 行事曆訂閱）
 - 💹 **卡牌市場** — 查詢遊々亭日本單卡售價（自動換算台幣；可輸入日文卡名、158/103 或 M6a_158），追蹤卡片價格走勢，設定「低於／高於」價格提醒
 - 🗃️ **賣場倉庫** — 記錄要在卡拍拍販售的卡片成本、上架價、成交價、手續費與運費，自動計算淨利，可匯出 CSV
@@ -194,6 +194,7 @@ caffeinate -i npm start
 | `watchlist.json` | 卡牌市場追蹤清單與價格紀錄 |
 | `settings.json` | 使用者設定（含 Discord Webhook） |
 | `products.json`、`events.json`、`tournaments.json`、`last_fetch.json`、`decks.json` | 抓取的資料與快取，每次會重新抓 |
+| `geocode.json` | 比賽場地的地圖座標（從 OpenStreetMap 查到的，查過的地址不會再查） |
 
 這個 repo 是公開的，所以 `backend/data/` 裡的檔案**都不會放進 git**。
 
@@ -241,3 +242,4 @@ scripts/
 | 🇺🇸 美國 | pokemon.com |
 | 💹 卡價 | 遊々亭 yuyu-tei.jp |
 | 🃏 牌組 | Limitless TCG limitlesstcg.com |
+| 🗺️ 地圖 | OpenStreetMap（底圖與地址定位） |

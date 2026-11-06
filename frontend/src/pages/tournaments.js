@@ -7,6 +7,20 @@ let showUpcoming = true;
 let searchQuery = '';
 let pageNum = 1;
 let countdownIntervals = [];
+const MAP_HIDDEN_KEY = 'tournamentMapHidden';
+
+// The map library is large, so it's downloaded only when this page first shows the map.
+// Callbacks on the one promise run in order, so a render queued first finishes first.
+let mapModule = null;
+const loadMap = () => (mapModule ||= import('../tournament-map.js'));
+
+// Whether the map is collapsed is remembered per browser; storage can be unavailable
+function mapHidden() {
+  try { return localStorage.getItem(MAP_HIDDEN_KEY) === '1'; } catch { return false; }
+}
+function setMapHidden(hidden) {
+  try { localStorage.setItem(MAP_HIDDEN_KEY, hidden ? '1' : '0'); } catch {}
+}
 
 export async function renderTournaments(container) {
   // Start fresh each visit so the state matches the freshly rendered tabs and search box
@@ -36,6 +50,21 @@ export async function renderTournaments(container) {
           <button class="filter-tab" data-upcoming="false">全部賽事</button>
         </div>
       </div>
+      <!-- Taiwan only for now: venues come with full addresses there -->
+      <section class="map-panel" id="tournament-map-panel" hidden>
+        <div class="map-panel-header">
+          <div>
+            <div class="map-panel-title">🗺️ 台灣比賽地圖</div>
+            <div class="map-panel-sub" id="tournament-map-sub"></div>
+          </div>
+          <div class="map-legend">
+            <span><i class="map-legend-dot open"></i>開放報名中</span>
+            <span><i class="map-legend-dot"></i>已截止／未公布</span>
+            <button class="btn-secondary btn-sm" type="button" id="btn-toggle-map" aria-controls="tournament-map"></button>
+          </div>
+        </div>
+        <div id="tournament-map" class="tournament-map"></div>
+      </section>
       <div id="tournaments-grid" class="items-grid">
         <div class="loading-spinner" style="grid-column:1/-1"><div class="spinner"></div><span>載入中...</span></div>
       </div>
@@ -66,6 +95,23 @@ export async function renderTournaments(container) {
     showUpcoming = btn.dataset.upcoming === 'true';
     pageNum = 1;
     renderTournamentList();
+  });
+
+  document.getElementById('btn-toggle-map').addEventListener('click', () => {
+    setMapHidden(!mapHidden());
+    renderTournamentList();
+  });
+
+  // 「地圖」 on a card: bring the map into view and open that venue
+  document.getElementById('tournaments-grid').addEventListener('click', e => {
+    const btn = e.target.closest('[data-map-id]');
+    if (!btn) return;
+    if (mapHidden()) {
+      setMapHidden(false);
+      renderTournamentList();
+    }
+    document.getElementById('tournament-map-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    loadMap().then(m => m.showOnMap(btn.dataset.mapId));
   });
 
   try {
@@ -104,6 +150,8 @@ function renderTournamentList() {
   const grid = document.getElementById('tournaments-grid');
   if (!grid) return;
 
+  renderMapPanel(list);
+
   const { items, ...pageInfo } = paginate(list, pageNum);
   pageNum = pageInfo.page;
   renderPagination(document.getElementById('tournaments-pagination'), pageInfo, p => {
@@ -139,6 +187,7 @@ function renderTournamentList() {
         <div class="item-actions">
           ${t.registrationUrl ? `<a href="${escHtml(t.registrationUrl)}" target="_blank" rel="noopener" class="btn-primary">🎯 立即報名</a>` : ''}
           ${t.url && t.url !== t.registrationUrl ? `<a href="${escHtml(t.url)}" target="_blank" rel="noopener" class="btn-secondary">詳細資訊</a>` : ''}
+          ${t.geo ? `<button type="button" class="btn-secondary" data-map-id="${escHtml(t.id)}">📍 地圖</button>` : ''}
           ${!t.registrationUrl && !t.url ? `<span class="btn-secondary" style="pointer-events:none;opacity:0.5">連結待公佈</span>` : ''}
         </div>
       </div>`;
@@ -154,5 +203,32 @@ function renderTournamentList() {
         if (interval) countdownIntervals.push(interval);
       }
     }
+  });
+}
+
+// The map shows the same filtered list as the cards (all pages of it), for Taiwan
+function renderMapPanel(list) {
+  const panel = document.getElementById('tournament-map-panel');
+  panel.hidden = !['all', 'tw'].includes(currentRegion);
+  if (panel.hidden) return;
+
+  const taiwan = list.filter(t => t.region === 'tw');
+  const hidden = mapHidden();
+  const mapEl = document.getElementById('tournament-map');
+  mapEl.hidden = hidden;
+  document.getElementById('btn-toggle-map').textContent = hidden ? '展開地圖' : '收起地圖';
+  document.getElementById('btn-toggle-map').setAttribute('aria-expanded', String(!hidden));
+
+  const located = taiwan.filter(t => t.geo).length;
+  const missing = taiwan.length - located;
+  document.getElementById('tournament-map-sub').textContent = taiwan.length
+    ? `${located} 場比賽${missing ? `，另有 ${missing} 場沒有地址或還在定位中` : ''}`
+    : '目前的篩選條件下沒有台灣的比賽';
+  if (hidden) return;
+  loadMap().then(m => {
+    // Skip if the page was left or re-rendered while the map code was loading
+    if (mapEl.isConnected) m.renderTournamentMap(mapEl, taiwan);
+  }).catch(() => {
+    mapEl.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">地圖載入失敗</div></div>';
   });
 }
