@@ -157,7 +157,7 @@ function renderSettingsForm(settings) {
     <!-- Scraper health -->
     <div class="settings-section">
       <div class="settings-title">🩺 資料來源狀態</div>
-      <div class="form-hint" style="margin-bottom:12px">每次自動更新時各網站抓到幾筆資料。出錯或抓到 0 筆都算失敗，通常是對方網站改版或擋掉了連線</div>
+      <div class="form-hint" style="margin-bottom:12px">每次自動更新時各網站抓到幾筆資料。出錯或抓到 0 筆都算失敗，通常是對方網站改版。「被官網擋下」是對方用機器人防護拒絕程式抓取，只能等對方開放或改用其他來源；這種不會在側欄另外警告</div>
       <div id="sources-status" class="text-sm">載入中...</div>
     </div>
 
@@ -336,7 +336,7 @@ function renderSources(sources) {
     const s = sources[key];
     const status = s.failStreak === 0
       ? '<span class="price-change-up">✅ 正常</span>'
-      : `<span class="price-change-down">${s.error ? '❌ 錯誤' : '⚠️ 抓到 0 筆'}</span>${s.failStreak > 1 ? `<span class="text-muted">（連續 ${s.failStreak} 次）</span>` : ''}`;
+      : `<span class="price-change-down">${s.blocked ? '🚫 被官網擋下' : s.error ? '❌ 錯誤' : '⚠️ 抓到 0 筆'}</span>${s.failStreak > 1 ? `<span class="text-muted">（連續 ${s.failStreak} 次）</span>` : ''}`;
     return `
       <tr>
         <td>${SOURCE_REGIONS[region]} ${SOURCE_KINDS[kind]}</td>

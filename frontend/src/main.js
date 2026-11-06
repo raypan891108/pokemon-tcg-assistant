@@ -197,8 +197,9 @@ async function checkUpdates({ quiet = false } = {}) {
   const el = document.getElementById('fetch-times');
   try {
     const status = await api.schedulerStatus();
-    // Three hourly runs in a row: not a passing hiccup (details on the settings page)
-    const broken = Object.values(status.sources || {}).filter(s => s.failStreak >= 3).length;
+    // Three hourly runs in a row: not a passing hiccup (details on the settings page).
+    // A site's bot protection blocking us is shown there but not warned about here: nothing changes it
+    const broken = Object.values(status.sources || {}).filter(s => s.failStreak >= 3 && !s.blocked).length;
     el.textContent = status.running
       ? '正在抓取最新資料...'
       : `上次更新 ${formatTime(status.lastRunAt)}${status.nextRunAt ? ` · 下次 ${formatTime(status.nextRunAt)}` : ''}${broken ? ` · ⚠️ ${broken} 個來源異常` : ''}`;

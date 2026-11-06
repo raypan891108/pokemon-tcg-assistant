@@ -1,4 +1,4 @@
-const axios = require('axios');
+const fetch = require('./fetch');
 const cheerio = require('cheerio');
 const crypto = require('crypto');
 
@@ -13,8 +13,7 @@ const HEADERS = {
 const PRODUCT_TYPES = { expansion: '擴充包', construction: '構築組', others: '特別組合' };
 
 async function fetchPage(url) {
-  const { data } = await axios.get(url, { headers: HEADERS, timeout: 15000 });
-  return cheerio.load(data);
+  return cheerio.load(await fetch.get(url, { headers: HEADERS, timeout: 15000 }));
 }
 
 function generateId(text) {
@@ -75,7 +74,7 @@ async function scrapeProducts() {
 
   for (const [type, label] of Object.entries(PRODUCT_TYPES)) {
     try {
-      const { data } = await axios.get(`${BASE_URL}/products/resultAPI.php?productType=${type}&page=1`, { headers: HEADERS, timeout: 15000 });
+      const data = await fetch.get(`${BASE_URL}/products/resultAPI.php?productType=${type}&page=1`, { headers: HEADERS, timeout: 15000 });
       for (const p of data.products || []) {
         // Reuse the news item's key when the catalogue title contains it, so both share one id
         const title = p.productTitle.replace(/\s+/g, '');

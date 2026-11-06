@@ -240,8 +240,8 @@ scripts/
 | 項目 | 網站 |
 |------|------|
 | 🇹🇼 台灣 | asia.pokemon-card.com/tw |
-| 🇯🇵 日本 | pokemon-card.com |
-| 🇺🇸 美國 | pokemon.com |
+| 🇯🇵 日本 | pokemon-card.com（比賽頁有機器人防護，目前抓不到；商品和活動正常） |
+| 🇺🇸 美國 | pokemon.com（官網的機器人防護擋掉了程式抓取，預設關閉，可在「設定」開啟） |
 | 💹 卡價 | 遊々亭 yuyu-tei.jp |
 | 🃏 牌組 | Limitless TCG limitlesstcg.com |
 | 🗺️ 地圖 | OpenStreetMap（底圖與地址定位） |

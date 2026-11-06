@@ -1,4 +1,4 @@
-const axios = require('axios');
+const fetch = require('./fetch');
 const cheerio = require('cheerio');
 const crypto = require('crypto');
 
@@ -21,7 +21,7 @@ const LEAGUE_NAMES = {
 const MAX_PRODUCTS_PER_TAB = 20;
 
 async function fetchPage(url) {
-  const { data } = await axios.get(url, {
+  const data = await fetch.get(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
       'Accept-Language': 'zh-TW,zh;q=0.9',
@@ -155,7 +155,7 @@ function toTaiwanIso(str) {
 
 // The API returns one entry per age division; merge divisions held at the same date and venue
 async function scrapeEntryTournaments() {
-  const { data } = await axios.get(ENTRY_API_URL, {
+  const data = await fetch.get(ENTRY_API_URL, {
     headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36' },
     timeout: 15000,
   });

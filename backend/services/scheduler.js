@@ -49,11 +49,12 @@ async function updateSources(sourceResults) {
   const prev = await storage.getSources();
   const now = new Date().toISOString();
   const next = {};
-  for (const [key, { count, error }] of Object.entries(sourceResults)) {
+  for (const [key, { count, error, blocked }] of Object.entries(sourceResults)) {
     const ok = !error && count > 0;
     next[key] = {
       count,
       error,
+      blocked,
       lastRunAt: now,
       lastSuccessAt: ok ? now : prev[key]?.lastSuccessAt || null,
       failStreak: ok ? 0 : (prev[key]?.failStreak || 0) + 1,
@@ -81,10 +82,11 @@ async function runFetch() {
       return scraper[method]().then(items => {
         results[kind].push(...items);
         if (kind === 'products') fetched.push(`${region}-products`);
-        sourceResults[`${region}-${kind}`] = { count: items.length, error: null };
+        sourceResults[`${region}-${kind}`] = { count: items.length, error: null, blocked: null };
       }, e => {
         results.errors.push(`${label} ${kind}: ${e.message}`);
-        sourceResults[`${region}-${kind}`] = { count: 0, error: e.message };
+        // blocked: the site's bot protection turned us away (see scrapers/fetch.js)
+        sourceResults[`${region}-${kind}`] = { count: 0, error: e.message, blocked: e.blocked || null };
       });
     });
   });

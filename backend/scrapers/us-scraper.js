@@ -1,4 +1,4 @@
-const axios = require('axios');
+const fetch = require('./fetch');
 const cheerio = require('cheerio');
 const crypto = require('crypto');
 
@@ -6,7 +6,7 @@ const REGION = 'us';
 const BASE_URL = 'https://www.pokemon.com';
 
 async function fetchPage(url) {
-  const { data } = await axios.get(url, {
+  const data = await fetch.get(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
       'Accept-Language': 'en-US,en;q=0.9',
@@ -51,12 +51,7 @@ async function scrapeProducts() {
 
 async function scrapeEvents() {
   const events = [];
-  // Try Play! Pokemon events API
-  const { data } = await axios.get('https://www.pokemon.com/us/play-pokemon/pokemon-events/find-an-event/', {
-    headers: { 'User-Agent': 'Mozilla/5.0' },
-    timeout: 15000,
-  });
-  const $ = cheerio.load(data);
+  const $ = await fetchPage('https://www.pokemon.com/us/play-pokemon/pokemon-events/find-an-event/');
 
   $('[class*="event"], article, li').each((_, el) => {
     const name = $(el).find('h2, h3, a, .title').first().text().trim();

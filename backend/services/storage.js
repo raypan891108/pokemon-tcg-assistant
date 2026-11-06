@@ -24,7 +24,8 @@ const FILE_NAMES = {
 // Default settings
 const DEFAULT_SETTINGS = {
   discordWebhook: '',
-  regions: ['tw', 'jp', 'us'],
+  // pokemon.com's bot protection blocks the US scraper, so it's off unless you turn it on in 設定
+  regions: ['tw', 'jp'],
   notifyNewProducts: true,
   notifyEvents: true,
   notifyTournaments: true,
