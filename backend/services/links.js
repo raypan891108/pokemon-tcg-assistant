@@ -72,7 +72,7 @@ function validate(body) {
   if (body.groups.length > MAX_GROUPS) throw new Error(`最多 ${MAX_GROUPS} 個分組`);
   const seen = new Set();
   const uniqueId = id => {
-    const clean = /^[\w-]{1,40}$/.test(id) && !seen.has(id) ? id : newId();
+    const clean = typeof id === 'string' && /^[\w-]{1,40}$/.test(id) && !seen.has(id) ? id : newId();
     seen.add(clean);
     return clean;
   };
@@ -94,7 +94,8 @@ function validate(body) {
 
 async function get() {
   const saved = await storage.getLinks();
-  return saved || { groups: withIds(DEFAULT_GROUPS) };
+  // Run through validate so a link saved without an id (an older bug) gets one and can be edited
+  return saved ? validate(saved) : { groups: withIds(DEFAULT_GROUPS) };
 }
 
 async function save(body) {
