@@ -1757,3 +1757,125 @@ a.link-card:hover {
 @media (max-width: 768px) {
   .links-grid { grid-template-columns: 1fr; }
 }
+
+/* ═══ 我的牌組 ═══ */
+
+.my-deck-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.my-deck-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  text-align: left;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.my-deck-card:hover { border-color: var(--border-hover); background: var(--bg-card-hover); transform: translateY(-2px); }
+
+.my-deck-name { font-size: 16px; font-weight: 700; }
+
+.my-deck-meta { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-secondary); }
+
+.back-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.back-link:hover { color: var(--gold); }
+
+.stat-of { font-size: 18px; }
+
+/* NT$ amounts run longer than the dashboard counts */
+.my-deck-stats .stat-value { font-size: 30px; overflow-wrap: anywhere; }
+
+.my-deck-section { margin-bottom: 20px; }
+
+.my-deck-section-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+
+.my-deck-section-title .text-muted { font-size: 13px; font-weight: 500; margin-left: 6px; }
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--gold);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+a.btn-sm { text-decoration: none; display: inline-flex; align-items: center; }
+
+.result-pill {
+  display: inline-block;
+  min-width: 32px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.result-win { color: #4ADE80; border-color: rgba(74, 222, 128, 0.4); }
+.result-loss { color: var(--red); border-color: rgba(230, 57, 70, 0.45); }
+.result-tie { color: var(--text-secondary); }
+
+.result-choice { display: flex; gap: 10px; }
+
+.result-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.result-option input { position: absolute; opacity: 0; pointer-events: none; }
+.result-option:has(input:checked) { background: rgba(255, 255, 255, 0.06); border-color: currentColor; }
+.result-option:has(input:focus-visible) { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.inventory-pick { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }
+
+.inventory-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.inventory-pick-row.is-in-deck { opacity: 0.5; cursor: default; }
+
+.inventory-pick-name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+
+.inventory-pick-qty { width: 64px; flex: none; }
+
+@media (max-width: 768px) {
+  .my-deck-grid { grid-template-columns: 1fr; }
+  .my-deck-stats .stat-value { font-size: 22px; }
+}

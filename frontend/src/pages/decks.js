@@ -1,5 +1,6 @@
 import { api } from '../api.js';
 import { escHtml, showToast } from '../utils.js';
+import { showMyDeck } from './mydecks.js';
 
 const FORMAT_LABELS = {
   'standard-jp': '日本／亞洲賽制',
@@ -92,6 +93,8 @@ export async function renderDecks(container) {
   document.getElementById('deck-list').addEventListener('click', e => {
     const head = e.target.closest('.deck-row-head');
     if (head) toggleDeck(head);
+    const save = e.target.closest('[data-action="save-deck"]');
+    if (save) saveAsMyDeck(save);
   });
 
   await loadMeta();
@@ -152,6 +155,7 @@ function listHtml(list) {
       範例牌表：<strong>${escHtml(list.player)}</strong> · ${escHtml(list.placing)}
       ${list.tournament ? `<span class="text-muted">（${escHtml(list.tournament)}）</span>` : ''}
       · <a href="${escHtml(list.listUrl)}" target="_blank" rel="noopener" class="text-gold">在 Limitless 查看 →</a>
+      <button type="button" class="btn-secondary btn-sm" data-action="save-deck" style="margin-left:8px">📥 存成我的牌組</button>
     </div>
     ${lang === 'zh' ? '<p class="form-hint" style="margin:-4px 0 12px">寶可夢顯示中文名稱；訓練家卡和能量卡沒有可靠的中文資料，顯示日文名稱。編號是日本版，可以直接用在卡牌市場的搜尋（例如 M2a_132）。</p>' : ''}
     <div class="decklist">
@@ -168,6 +172,33 @@ function listHtml(list) {
           </ul>
         </div>`).join('')}
     </div>`;
+}
+
+// Copies the sample list, in the language shown, into a new deck on the 我的牌組 page
+const SECTION_KEYS = [[/^Pok/i, 'pokemon'], [/^Trainer/i, 'trainer'], [/^Energy/i, 'energy']];
+
+async function saveAsMyDeck(btn) {
+  const id = btn.closest('.deck-row')?.querySelector('.deck-row-head')?.dataset.id;
+  const deck = meta?.decks.find(d => d.id === id);
+  const list = lists.get(id);
+  if (!deck || !list) return;
+  btn.disabled = true;
+  try {
+    const created = await api.createMyDeck({
+      name: deckName(deck),
+      notes: `範例牌表：${list.player} · ${list.placing}${list.tournament ? `（${list.tournament}）` : ''}`,
+      cards: list.sections.flatMap(s => {
+        const section = SECTION_KEYS.find(([re]) => re.test(s.heading))?.[1] || 'trainer';
+        return s.cards.map(c => ({ name: cardName(c), section, print: cardPrint(c), quantity: c.count, owned: 0, price: null }));
+      }),
+      matches: [],
+    });
+    showToast('已存成我的牌組', 'success');
+    showMyDeck(created.id);
+  } catch (err) {
+    showToast(`儲存失敗：${err.message}`, 'error');
+    btn.disabled = false;
+  }
 }
 
 async function toggleDeck(head) {

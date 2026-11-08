@@ -17,10 +17,10 @@ function blockedError(by) {
   return error;
 }
 
-async function get(url, options) {
+async function send(request) {
   let res;
   try {
-    res = await axios.get(url, options);
+    res = await request();
   } catch (e) {
     const by = blockedBy(e.response);
     throw by ? blockedError(by) : e;
@@ -30,4 +30,7 @@ async function get(url, options) {
   return res.data;
 }
 
-module.exports = { get };
+const get = (url, options) => send(() => axios.get(url, options));
+const post = (url, data, options) => send(() => axios.post(url, data, options));
+
+module.exports = { get, post };

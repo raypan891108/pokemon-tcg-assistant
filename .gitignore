@@ -9,6 +9,7 @@ backend/data/settings.json
 backend/data/inventory.json
 backend/data/watchlist.json
 backend/data/links.json
+backend/data/my_decks.json
 
 # Scraped data and caches, regenerated on every fetch
 backend/data/products.json

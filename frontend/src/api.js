@@ -67,6 +67,12 @@ export const api = {
   decks: (format, refresh) => get('/decks', { format, refresh }),
   deckList: (id, format) => get(`/decks/${id}/list`, { format }),
 
+  myDecks: () => get('/my-decks'),
+  createMyDeck: (deck) => post('/my-decks', deck),
+  importMyDeck: (code, name) => post('/my-decks/import', { code, name }),
+  saveMyDeck: (id, deck) => put(`/my-decks/${encodeURIComponent(id)}`, deck),
+  deleteMyDeck: (id) => del(`/my-decks/${encodeURIComponent(id)}`),
+
   links: () => get('/links'),
   saveLinks: (data) => put('/links', data),
 };

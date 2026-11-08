@@ -19,6 +19,7 @@ const FILE_NAMES = {
   sources: 'sources.json',
   geocode: 'geocode.json',
   links: 'links.json',
+  myDecks: 'my_decks.json',
 };
 
 // Default settings
@@ -130,6 +131,9 @@ module.exports = {
   // Your grouped website links (see links.js); null until first saved
   getLinks: () => read('links', null),
   saveLinks: (data) => write('links', data),
+  // Your own decks with card prices and match records (see my-decks.js)
+  getMyDecks: () => read('myDecks', []),
+  saveMyDecks: (decks) => write('myDecks', decks),
 
   saveProducts: (newItems) => mergeAndSave('products', newItems),
   saveEvents: (newItems) => mergeAndSave('events', newItems),

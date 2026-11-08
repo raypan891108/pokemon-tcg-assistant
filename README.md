@@ -14,7 +14,8 @@
 - 📅 **行事曆訂閱** — 比賽、報名截止、新商品發售日同步到 iPhone 行事曆，到時間會跳提醒（設定頁 › 行事曆訂閱）
 - 💹 **卡牌市場** — 查詢遊々亭日本單卡售價（自動換算台幣；可輸入日文卡名、158/103 或 M6a_158），追蹤卡片價格走勢，設定「低於／高於」價格提醒
 - 🗃️ **賣場倉庫** — 記錄要在卡拍拍販售的卡片成本、上架價、成交價、手續費與運費，自動計算淨利，可匯出 CSV
-- 🃏 **牌組推薦** — Limitless TCG 近 3 個月主流牌組排名與範例牌表（日本／亞洲賽制、國際賽制），卡名可切換中文／日文／英文
+- 🃏 **牌組推薦** — Limitless TCG 近 3 個月主流牌組排名與範例牌表（日本／亞洲賽制、國際賽制），卡名可切換中文／日文／英文，範例牌表可以一鍵存成自己的牌組
+- 🗂️ **我的牌組** — 自己組的牌：每張卡填上價格（可貼卡拍拍網址當價格來源）和已經有幾張，自動算出整副成本和還要花多少；也能從賣場倉庫挑卡，並記錄每場比賽的勝敗和勝率。貼上 PTCGTW 牌組代碼（例如 CQ94394）就能一次匯入整副牌，價格先帶入 Kiwi PTCG 的售價
 - 🔗 **相關網站** — 把常用的 PTCG 網站分組整理在一頁，可以自己新增、修改、排序
 - 🔔 **Discord 通知** — 新資料、報名截止、新商品發售（前幾天與當天）、卡價提醒，自動推播到您的頻道
 
@@ -195,6 +196,7 @@ caffeinate -i npm start
 | `watchlist.json` | 卡牌市場追蹤清單與價格紀錄 |
 | `settings.json` | 使用者設定（含 Discord Webhook） |
 | `links.json` | 相關網站清單與分組 |
+| `my_decks.json` | 我的牌組：牌表、價格與比賽紀錄 |
 | `products.json`、`events.json`、`tournaments.json`、`last_fetch.json`、`decks.json` | 抓取的資料與快取，每次會重新抓 |
 | `geocode.json` | 比賽場地的地圖座標（從 OpenStreetMap 查到的，查過的地址不會再查） |
 
@@ -202,7 +204,7 @@ caffeinate -i npm start
 
 ### 自動備份
 
-網站每天會自動把 `inventory.json`、`watchlist.json`、`links.json`、`settings.json` 複製一份到 **iCloud 雲碟 › TCG助手備份**，每天一個以日期命名的資料夾（例如 `2026-11-02`），保留最近 30 天。沒有開 iCloud 雲碟時，會改存到「文件」資料夾。Windows 上則存到 **OneDrive › TCG助手備份**（沒有 OneDrive 時同樣存到「文件」）。
+網站每天會自動把 `inventory.json`、`watchlist.json`、`links.json`、`my_decks.json`、`settings.json` 複製一份到 **iCloud 雲碟 › TCG助手備份**，每天一個以日期命名的資料夾（例如 `2026-11-02`），保留最近 30 天。沒有開 iCloud 雲碟時，會改存到「文件」資料夾。Windows 上則存到 **OneDrive › TCG助手備份**（沒有 OneDrive 時同樣存到「文件」）。
 
 - 「⚙️ 設定」頁可以看到上次備份的時間，也可以按「💾 立即備份」。
 - 要還原時，把備份資料夾裡的檔案複製回 `backend/data/`，再執行 `./scripts/autostart.sh restart`。
@@ -210,7 +212,7 @@ caffeinate -i npm start
 
 ### 換電腦（例如從 Mac 搬到 Windows）
 
-`backend/data/` 不在 git 裡，clone 下來是空的。把舊電腦的 `inventory.json`、`watchlist.json`、`links.json`、`settings.json`（或最新一份備份資料夾裡的同名檔案）複製到新電腦的 `backend/data/`，再執行 `install`（已在執行的話用 `restart`）。登入密碼不在這些檔案裡，要在新電腦重新設定一次。
+`backend/data/` 不在 git 裡，clone 下來是空的。把舊電腦的 `inventory.json`、`watchlist.json`、`links.json`、`my_decks.json`、`settings.json`（或最新一份備份資料夾裡的同名檔案）複製到新電腦的 `backend/data/`，再執行 `install`（已在執行的話用 `restart`）。登入密碼不在這些檔案裡，要在新電腦重新設定一次。
 
 ---
 
@@ -244,4 +246,5 @@ scripts/
 | 🇺🇸 美國 | pokemon.com（官網的機器人防護擋掉了程式抓取，預設關閉，可在「設定」開啟） |
 | 💹 卡價 | 遊々亭 yuyu-tei.jp |
 | 🃏 牌組 | Limitless TCG limitlesstcg.com |
+| 📥 牌組代碼匯入 | PTCGTW ptcgtw.shop（只在按「匯入」時讀一次） |
 | 🗺️ 地圖 | OpenStreetMap（底圖與地址定位） |

@@ -12,6 +12,7 @@ const backup = require('./services/backup');
 const calendar = require('./services/calendar');
 const geocode = require('./services/geocode');
 const links = require('./services/links');
+const myDecks = require('./services/my-decks');
 
 // The Express app; server.js starts it
 const app = express();
@@ -165,6 +166,24 @@ app.post('/api/market/refresh', handle(() => market.refreshWatchlist()));
 app.get('/api/decks', handle(req => decks.getMeta(req.query.format, req.query.refresh === 'true')));
 
 app.get('/api/decks/:id/list', handle(req => decks.getSampleList(req.params.id, req.query.format)));
+
+// Your own decks (我的牌組 page): cards with prices, and match records
+app.get('/api/my-decks', handle(() => myDecks.list()));
+
+app.post('/api/my-decks', handle(req => myDecks.create(req.body)));
+
+// Import a deck shared on PTCGTW by its code (e.g. CQ94394)
+app.post('/api/my-decks/import', handle(req => myDecks.importPtcgtw(req.body)));
+
+app.put('/api/my-decks/:id', handle(async (req, res) => {
+  return await myDecks.update(req.params.id, req.body) || notFound(res, '找不到這副牌組');
+}));
+
+app.delete('/api/my-decks/:id', handle(async (req, res) => {
+  const ok = await myDecks.remove(req.params.id);
+  if (!ok) res.status(404);
+  return { success: ok };
+}));
 
 // Your grouped website links (相關網站 page), saved as a whole
 app.get('/api/links', handle(() => links.get()));
