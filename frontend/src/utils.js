@@ -116,20 +116,39 @@ export function debounce(fn, ms = 300) {
   return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
 }
 
-// Modal dialog; returns { el, close }. Closes on backdrop click or Escape.
+// Everything typed or picked in the dialog, to tell whether anything changed since it opened
+function fieldValues(root) {
+  return JSON.stringify([...root.querySelectorAll('input, select, textarea')].map(f =>
+    (f.type === 'checkbox' || f.type === 'radio' ? f.checked : f.value)));
+}
+
+// Modal dialog; returns { el, close }. A click outside or Escape closes it, but asks first when
+// something was typed, so a stray click doesn't throw a half-filled form away. A click only
+// counts as outside when it also started outside: selecting text in a field and letting go
+// over the backdrop isn't one. 取消 ([data-close]) and the caller's close() close right away.
 export function openModal(html) {
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop';
   backdrop.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}</div>`;
   document.body.appendChild(backdrop);
+  const initial = fieldValues(backdrop);
 
-  const onKey = (e) => { if (e.key === 'Escape') close(); };
   function close() {
     document.removeEventListener('keydown', onKey);
     backdrop.remove();
   }
+  function dismiss() {
+    if (fieldValues(backdrop) !== initial && !confirm('還有沒儲存的內容，確定要關閉嗎？')) return;
+    close();
+  }
+  const onKey = (e) => { if (e.key === 'Escape') dismiss(); };
+  let pressedOutside = false;
+  backdrop.addEventListener('pointerdown', (e) => { pressedOutside = e.target === backdrop; });
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop && pressedOutside) dismiss();
+    pressedOutside = false;
+  });
   document.addEventListener('keydown', onKey);
-  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
   backdrop.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', close));
   backdrop.querySelector('input, select, textarea')?.focus();
   return { el: backdrop, close };
