@@ -29,6 +29,22 @@ export async function renderMyDecks(container) {
   container.innerHTML = `<div id="mydecks-root"><div class="loading-spinner"><div class="spinner"></div><span>載入中...</span></div></div>`;
   const root = container.querySelector('#mydecks-root');
   root.addEventListener('click', onAction);
+  // Unit prices are edited right in the table: saved when the field is left, Enter goes to the next
+  root.addEventListener('change', e => {
+    if (e.target.matches('.price-input')) setPrice(e.target);
+  });
+  root.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || !e.target.matches('.price-input')) return;
+    e.preventDefault();
+    const inputs = [...root.querySelectorAll('.price-input')];
+    const next = inputs[inputs.indexOf(e.target) + 1];
+    if (next) {
+      next.focus();
+      next.select();
+    } else {
+      e.target.blur();
+    }
+  });
 
   try {
     decks = await api.myDecks();
@@ -122,9 +138,37 @@ function deckCard(deck) {
     </button>`;
 }
 
-function renderDeck(deck) {
+function statsHtml(deck) {
   const s = deckSummary(deck);
   const r = deckRecord(deck);
+  return `
+    <div class="stat-card">
+      <div class="stat-icon">🃏</div>
+      <div class="stat-value">${s.count}<span class="stat-of"> / ${DECK_SIZE}</span></div>
+      <div class="stat-label">張數</div>
+      <div class="stat-sub">${countText(s.count)}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">💰</div>
+      <div class="stat-value">${formatTwd(s.total)}</div>
+      <div class="stat-label">整副成本</div>
+      <div class="stat-sub">${s.unpriced ? `${s.unpriced} 張還沒填價格，沒算進去` : s.count ? '每張都有價格' : '加入卡片後計算'}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🛒</div>
+      <div class="stat-value">${formatTwd(s.toBuy)}</div>
+      <div class="stat-label">還要花</div>
+      <div class="stat-sub">缺 ${s.missing} 張 · 已擁有的值 ${formatTwd(s.ownedValue)}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🏆</div>
+      <div class="stat-value">${percent(r.winRate)}</div>
+      <div class="stat-label">勝率</div>
+      <div class="stat-sub">${r.games ? `${r.games} 場 · ${recordText(r)}` : '還沒有比賽紀錄'}</div>
+    </div>`;
+}
+
+function renderDeck(deck) {
   document.getElementById('mydecks-root').innerHTML = `
     <div class="page-header">
       <div>
@@ -138,32 +182,7 @@ function renderDeck(deck) {
       </div>
     </div>
     <div class="page-body">
-      <div class="stats-grid my-deck-stats">
-        <div class="stat-card">
-          <div class="stat-icon">🃏</div>
-          <div class="stat-value">${s.count}<span class="stat-of"> / ${DECK_SIZE}</span></div>
-          <div class="stat-label">張數</div>
-          <div class="stat-sub">${countText(s.count)}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">💰</div>
-          <div class="stat-value">${formatTwd(s.total)}</div>
-          <div class="stat-label">整副成本</div>
-          <div class="stat-sub">${s.unpriced ? `${s.unpriced} 張還沒填價格，沒算進去` : s.count ? '每張都有價格' : '加入卡片後計算'}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">🛒</div>
-          <div class="stat-value">${formatTwd(s.toBuy)}</div>
-          <div class="stat-label">還要花</div>
-          <div class="stat-sub">缺 ${s.missing} 張 · 已擁有的值 ${formatTwd(s.ownedValue)}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">🏆</div>
-          <div class="stat-value">${percent(r.winRate)}</div>
-          <div class="stat-label">勝率</div>
-          <div class="stat-sub">${r.games ? `${r.games} 場 · ${recordText(r)}` : '還沒有比賽紀錄'}</div>
-        </div>
-      </div>
+      <div class="stats-grid my-deck-stats" id="deck-stats">${statsHtml(deck)}</div>
       <div class="toolbar">
         <div class="filter-tabs">
           <button class="filter-tab ${tab === 'cards' ? 'active' : ''}" data-action="tab" data-tab="cards">牌表</button>
@@ -184,14 +203,14 @@ function cardsHtml(deck) {
   if (!deck.cards.length) {
     return `<div class="empty-state"><div class="empty-icon">🃏</div><div class="empty-title">牌表是空的</div><div class="empty-desc">按「＋ 新增卡片」加入卡片，或「📦 從倉庫加入」挑手上的卡</div></div>`;
   }
-  return Object.entries(SECTIONS).map(([key, label]) => {
+  return `
+    <p class="form-hint" style="margin:-8px 0 14px">單價可以直接在表格裡改，按 Enter 跳到下一張。「🔎 卡拍拍」會複製卡名並打開卡拍拍，貼上就能搜尋。</p>
+    ${Object.entries(SECTIONS).map(([key, label]) => {
     const cards = deck.cards.filter(c => c.section === key);
     if (!cards.length) return '';
-    const count = cards.reduce((n, c) => n + c.quantity, 0);
-    const subtotal = cards.reduce((n, c) => n + (c.price == null ? 0 : c.price * c.quantity), 0);
     return `
       <section class="my-deck-section">
-        <h2 class="my-deck-section-title">${label} <span class="text-muted">${count} 張 · ${formatTwd(subtotal)}</span></h2>
+        <h2 class="my-deck-section-title">${label} <span class="text-muted" data-section-total="${key}">${sectionTotal(cards)}</span></h2>
         <div class="table-wrap">
           <table class="price-table">
             <thead>
@@ -208,8 +227,16 @@ function cardsHtml(deck) {
           </table>
         </div>
       </section>`;
-  }).join('');
+  }).join('')}`;
 }
+
+function sectionTotal(cards) {
+  const count = cards.reduce((n, c) => n + c.quantity, 0);
+  const subtotal = cards.reduce((n, c) => n + (c.price == null ? 0 : c.price * c.quantity), 0);
+  return `${count} 張 · ${formatTwd(subtotal)}`;
+}
+
+const subtotalHtml = c => (c.price == null ? '<span class="text-muted">—</span>' : formatTwd(c.price * c.quantity));
 
 function cardRow(c) {
   const owned = Math.min(c.owned || 0, c.quantity);
@@ -218,13 +245,15 @@ function cardRow(c) {
       <td class="num"><strong class="text-gold">${c.quantity}</strong></td>
       <td class="wrap"><strong>${escHtml(c.name)}</strong>${c.print ? `<br><span class="text-muted text-sm">${escHtml(c.print)}</span>` : ''}</td>
       <td class="num"><span class="${owned === c.quantity ? 'profit-pos' : 'text-muted'}">${owned} / ${c.quantity}</span></td>
-      <td class="num">${c.price == null
-        ? `<button type="button" class="link-btn" data-action="card-edit" data-card="${c.id}">填價格</button>`
-        : formatTwd(c.price)}</td>
-      <td class="num">${c.price == null ? '<span class="text-muted">—</span>' : formatTwd(c.price * c.quantity)}</td>
+      <td class="num">
+        <input type="number" class="form-input price-input" data-card="${c.id}" min="0" step="any" inputmode="decimal"
+          value="${c.price ?? ''}" placeholder="填價格" aria-label="${escHtml(c.name)} 的單價（NT$）" />
+      </td>
+      <td class="num" data-subtotal="${c.id}">${subtotalHtml(c)}</td>
       <td>
         <div class="row-actions">
-          ${c.url ? `<a class="btn-secondary btn-sm" href="${escHtml(c.url)}" target="_blank" rel="noopener noreferrer" title="打開價格來源">🔗 價格來源</a>` : ''}
+          <button class="btn-secondary btn-sm" data-action="card-kapaipai" data-card="${c.id}" title="複製卡名並打開卡拍拍">🔎 卡拍拍</button>
+          ${c.url ? `<a class="btn-secondary btn-sm" href="${escHtml(c.url)}" target="_blank" rel="noopener noreferrer" title="打開價格來源">🔗 來源</a>` : ''}
           <button class="btn-secondary btn-sm" data-action="card-edit" data-card="${c.id}">編輯</button>
           <button class="btn-secondary btn-sm" data-action="card-delete" data-card="${c.id}" aria-label="刪除">🗑</button>
         </div>
@@ -274,12 +303,79 @@ async function saveDeck(deck, message) {
     if (message) showToast(message, 'success');
     return true;
   } catch (e) {
-    showToast(`儲存失敗：${e.message}`, 'error');
+    showToast(`儲存失敗：${escHtml(e.message)}`, 'error');
     return false;
   }
 }
 
 const current = () => structuredClone(decks.find(d => d.id === openId));
+
+// Price edits save one after another, each sending the deck as it was right after that edit,
+// so quickly tabbing through several prices can't let an older save overwrite a newer one.
+// Only the totals are redrawn, so the field you moved to keeps its focus.
+let priceSaves = Promise.resolve();
+
+function setPrice(input) {
+  const deck = decks.find(d => d.id === openId);
+  const card = deck?.cards.find(c => c.id === input.dataset.card);
+  if (!card) return;
+  const raw = input.value.trim();
+  const price = raw === '' ? null : Number(raw);
+  if (input.validity.badInput || (price != null && !(price >= 0))) {
+    showToast('價格需為 0 以上的數字', 'error');
+    input.value = card.price ?? '';
+    return;
+  }
+  if (price === card.price) return;
+  card.price = price;
+  refreshTotals(deck, card);
+
+  const snapshot = structuredClone(deck);
+  priceSaves = priceSaves
+    .then(() => api.saveMyDeck(snapshot.id, snapshot))
+    .catch(async err => {
+      showToast(`價格沒有存到：${escHtml(err.message)}`, 'error');
+      // Show what the server actually has
+      decks = await api.myDecks().catch(() => decks);
+      render();
+    });
+}
+
+function refreshTotals(deck, card) {
+  document.getElementById('deck-stats').innerHTML = statsHtml(deck);
+  const subtotal = document.querySelector(`[data-subtotal="${card.id}"]`);
+  if (subtotal) subtotal.innerHTML = subtotalHtml(card);
+  const section = document.querySelector(`[data-section-total="${card.section}"]`);
+  if (section) section.textContent = sectionTotal(deck.cards.filter(c => c.section === card.section));
+}
+
+// Synchronous, so the copy happens before the new tab takes focus away from this page
+function copyText(text) {
+  const area = document.createElement('textarea');
+  area.value = text;
+  area.setAttribute('readonly', '');
+  area.style.cssText = 'position:fixed;opacity:0';
+  document.body.appendChild(area);
+  area.select();
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } catch {
+    // Older or locked-down browsers: fall back to the Clipboard API below
+  }
+  area.remove();
+  return ok;
+}
+
+// You search 卡拍拍 yourself: this only copies the card name and opens the site, in the
+// same tab each time. Nothing is read from 卡拍拍 (its terms forbid automated access).
+function searchKapaipai(card) {
+  const copied = copyText(card.name);
+  if (!copied) navigator.clipboard?.writeText(card.name).catch(() => {});
+  const tab = window.open(KAPAIPAI_URL, 'kapaipai');
+  if (tab) tab.opener = null;
+  showToast(`已複製「${escHtml(card.name)}」，到卡拍拍的搜尋欄貼上`, 'success');
+}
 
 function onAction(e) {
   const btn = e.target.closest('[data-action]');
@@ -317,6 +413,9 @@ function onAction(e) {
       break;
     case 'card-add':
       openCardForm(deck);
+      break;
+    case 'card-kapaipai':
+      searchKapaipai(deck.cards.find(c => c.id === btn.dataset.card));
       break;
     case 'card-edit':
       openCardForm(deck, deck.cards.find(c => c.id === btn.dataset.card));
@@ -356,7 +455,7 @@ async function deleteDeck(deck) {
     render();
     showToast('已刪除牌組', 'success');
   } catch (e) {
-    showToast(`刪除失敗：${e.message}`, 'error');
+    showToast(`刪除失敗：${escHtml(e.message)}`, 'error');
   }
 }
 
@@ -395,7 +494,7 @@ function openDeckForm(deck = null) {
       close();
       showToast('已新增牌組', 'success');
     } catch (err) {
-      showToast(`新增失敗：${err.message}`, 'error');
+      showToast(`新增失敗：${escHtml(err.message)}`, 'error');
     }
   });
 }
@@ -437,7 +536,7 @@ function openImportForm() {
       tab = 'cards';
       render();
       close();
-      showToast(`已匯入「${created.name}」`, 'success');
+      showToast(`已匯入「${escHtml(created.name)}」`, 'success');
     } catch (err) {
       error.textContent = err.message;
       submit.disabled = false;
@@ -522,7 +621,7 @@ async function openInventoryPicker(deck) {
   try {
     items = (await api.inventory()).filter(i => i.status !== 'sold');
   } catch (e) {
-    showToast(`無法載入倉庫：${e.message}`, 'error');
+    showToast(`無法載入倉庫：${escHtml(e.message)}`, 'error');
     return;
   }
   if (!items.length) {

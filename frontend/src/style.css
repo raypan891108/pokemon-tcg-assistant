@@ -1875,6 +1875,17 @@ a.btn-sm { text-decoration: none; display: inline-flex; align-items: center; }
 
 .inventory-pick-qty { width: 64px; flex: none; }
 
+/* Unit price typed straight into the 我的牌組 table */
+.price-input {
+  width: 96px;
+  padding: 6px 8px;
+  margin-left: auto;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.price-input::placeholder { color: var(--text-muted); }
+
 @media (max-width: 768px) {
   .my-deck-grid { grid-template-columns: 1fr; }
   .my-deck-stats .stat-value { font-size: 22px; }
