@@ -96,4 +96,49 @@ async function scrapeSampleList(deckId, format = 'standard-jp') {
   return { ...found, sections };
 }
 
-module.exports = { scrapeMetaDecks, scrapeSampleList };
+// Archetype of a placing: the Pokémon icons Limitless shows for it ("dragapult", "dudunsparce")
+const deckIcons = ($, el) => $(el).find('img.pokemon').map((_, img) => $(img).attr('alt')).get().filter(Boolean);
+
+// Japanese City League results Limitless has recorded, newest first: the last 25, or with
+// show = 100 a hundred at a time (about two weeks), page 2 being the hundred before that
+async function scrapeCityLeagues(show = null, page = 1) {
+  const query = [show && `show=${show}`, page > 1 && `page=${page}`].filter(Boolean).join('&');
+  const $ = await fetchPage(`${BASE_URL}/tournaments/jp${query ? `?${query}` : ''}`);
+  return $('tr[data-date]').map((_, row) => {
+    const link = $(row).find('a[href*="/tournaments/jp/"]').attr('href') || '';
+    const id = (link.match(/\/tournaments\/jp\/(\d+)/) || [])[1];
+    if (!id) return null;
+    return {
+      id,
+      date: $(row).attr('data-date'),
+      city: $(row).attr('data-city') || '',
+      shop: $(row).attr('data-shop') || '',
+    };
+  }).get().filter(Boolean);
+}
+
+// One City League: each placing's player, archetype and decklist link
+async function scrapeCityLeague(id) {
+  const $ = await fetchPage(`${BASE_URL}/tournaments/jp/${id}`);
+  const placings = [];
+  $('table tr').slice(1).each((_, row) => {
+    const cells = $(row).find('td');
+    const place = Number(cells.eq(0).text().trim());
+    if (!place) return;
+    const listHref = $(row).find('a[href*="/decks/list/"]').attr('href') || '';
+    placings.push({
+      place,
+      player: cells.eq(1).text().trim(),
+      deck: deckIcons($, cells.eq(2)),
+      listUrl: listHref ? new URL(listHref, BASE_URL).href : '',
+    });
+  });
+  return placings;
+}
+
+// A decklist page by its URL, with English card names
+async function scrapeList(listUrl) {
+  return parseDecklist(await fetchPage(listUrl));
+}
+
+module.exports = { scrapeMetaDecks, scrapeSampleList, scrapeCityLeagues, scrapeCityLeague, scrapeList };

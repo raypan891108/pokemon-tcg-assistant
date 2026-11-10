@@ -17,6 +17,7 @@
 - 🃏 **牌組推薦** — Limitless TCG 近 3 個月主流牌組排名與範例牌表（日本／亞洲賽制、國際賽制），卡名可切換中文／日文／英文，範例牌表可以一鍵存成自己的牌組
 - 🗂️ **我的牌組** — 自己組的牌：每張卡填上價格（可貼卡拍拍網址當價格來源）和已經有幾張，自動算出整副成本和還要花多少；也能從賣場倉庫挑卡，並記錄每場比賽的勝敗和勝率。貼上 PTCGTW 牌組代碼（例如 CQ94394）就能一次匯入整副牌，價格先帶入 Kiwi PTCG 的售價。單價可以直接在牌表裡改；每張卡的「🔎 卡拍拍」會複製卡名並打開卡拍拍，自己搜尋後填回來（卡拍拍條款禁止自動擷取，所以不會自動抓價）
 - 🔗 **相關網站** — 把常用的 PTCG 網站分組整理在一頁，可以自己新增、修改、排序
+- 🧠 **PTCG 顧問的資料** — 每小時收集 Limitless 上新的日本城市聯賽結果，每天存一份環境快照並算好和前一天的差異，給 Claude 桌面版的 PTCG 顧問讀（見下方「PTCG 顧問」）
 - 🔔 **Discord 通知** — 新資料、報名截止、新商品發售（前幾天與當天）、卡價提醒，自動推播到您的頻道
 
 ---
@@ -91,6 +92,19 @@ npm start
 - 追蹤清單裡的卡片價格也會在每次更新時重新抓取。
 - 想改間隔：到「設定」頁修改「自動更新間隔」，再執行 `./scripts/autostart.sh restart`。
 - Mac 睡眠時不會更新，醒來後會在下一個整點繼續。
+- 每次更新也會收集 Limitless 上新的日本城市聯賽結果，並在每天第一次更新時存一份環境快照（見下方「PTCG 顧問」）。
+
+### PTCG 顧問
+
+PTCG 顧問是 Claude 桌面版的排程任務，放在另一個資料夾（例如 `F:\Pokemon\ptcg-advisor`，不在這個公開的 repo 裡）。網站負責抓資料和算差異，顧問只讀整理好的結果、寫分析筆記：
+
+| 檔案（`backend/data/meta-history/`） | 內容 |
+|---|---|
+| `city-league.json` | 近 180 天的日本城市聯賽結果：每場的名次、牌組、冠軍牌表。第一次會往回收集約四週 |
+| `YYYY-MM-DD.json` | 每天的快照：Limitless 的日本與國際排名、日本前 8 名牌組的範例牌表 |
+| `YYYY-MM-DD.diff.md` | 和前一天比較的摘要（中文）：城市聯賽近 7 天 vs 前 7 天的牌組入賞占比、新收集到的比賽與冠軍牌表、排名與範例牌表的變化 |
+
+快照保留 180 天。Limitless 的頁面每頁之間間隔 1 秒讀取，只讀它公開的比賽結果頁。
 
 ### 修改程式時（開發模式）
 
@@ -199,6 +213,7 @@ caffeinate -i npm start
 | `my_decks.json` | 我的牌組：牌表、價格與比賽紀錄 |
 | `products.json`、`events.json`、`tournaments.json`、`last_fetch.json`、`decks.json` | 抓取的資料與快取，每次會重新抓 |
 | `geocode.json` | 比賽場地的地圖座標（從 OpenStreetMap 查到的，查過的地址不會再查） |
+| `meta-history/` | PTCG 顧問用的城市聯賽結果、每日環境快照與差異（見「PTCG 顧問」） |
 
 這個 repo 是公開的，所以 `backend/data/` 裡的檔案**都不會放進 git**。
 
@@ -247,4 +262,5 @@ scripts/
 | 💹 卡價 | 遊々亭 yuyu-tei.jp |
 | 🃏 牌組 | Limitless TCG limitlesstcg.com |
 | 📥 牌組代碼匯入 | PTCGTW ptcgtw.shop（只在按「匯入」時讀一次） |
+| 🧠 日本城市聯賽結果 | Limitless TCG limitlesstcg.com/tournaments/jp |
 | 🗺️ 地圖 | OpenStreetMap（底圖與地址定位） |

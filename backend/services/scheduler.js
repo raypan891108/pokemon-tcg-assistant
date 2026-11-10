@@ -4,6 +4,7 @@ const notifier = require('./notifier');
 const market = require('./market');
 const backup = require('./backup');
 const geocode = require('./geocode');
+const metaHistory = require('./meta-history');
 const twScraper = require('../scrapers/tw-scraper');
 const jpScraper = require('../scrapers/jp-scraper');
 const usScraper = require('../scrapers/us-scraper');
@@ -104,6 +105,10 @@ async function runFetch() {
 
   // Locate new tournament venues for the map; slow (one lookup a second), so not awaited
   geocode.fillMissing().catch(e => console.error('[Geocode]', e.message));
+
+  // New City League results and the day's meta snapshot for the PTCG advisor; slow (Limitless
+  // pages a second apart), so not awaited
+  metaHistory.update().catch(e => console.error('[MetaHistory]', e.message));
 
   // Refresh 遊々亭 prices for watched cards
   try {
