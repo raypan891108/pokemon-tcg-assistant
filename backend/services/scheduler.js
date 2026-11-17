@@ -5,6 +5,7 @@ const market = require('./market');
 const backup = require('./backup');
 const geocode = require('./geocode');
 const metaHistory = require('./meta-history');
+const rates = require('./rates');
 const twScraper = require('../scrapers/tw-scraper');
 const jpScraper = require('../scrapers/jp-scraper');
 const usScraper = require('../scrapers/us-scraper');
@@ -109,6 +110,13 @@ async function runFetch() {
   // New City League results and the day's meta snapshot for the PTCG advisor; slow (Limitless
   // pages a second apart), so not awaited
   metaHistory.update().catch(e => console.error('[MetaHistory]', e.message));
+
+  // 人民幣 rate for costs typed in 人民幣 (倉庫); a failure keeps the previous rate.
+  // Not awaited, so a slow FX site doesn't delay prices, backups and notifications.
+  rates.refresh('CNY').then(cny => {
+    if (cny) console.log(`[Rates] 1 CNY = NT$${cny.rate}`);
+    else console.warn('[Rates] 無法更新人民幣匯率，沿用上次的匯率');
+  });
 
   // Refresh 遊々亭 prices for watched cards
   try {

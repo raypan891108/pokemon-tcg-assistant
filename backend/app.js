@@ -13,6 +13,8 @@ const calendar = require('./services/calendar');
 const geocode = require('./services/geocode');
 const links = require('./services/links');
 const myDecks = require('./services/my-decks');
+const rates = require('./services/rates');
+const media = require('./services/media');
 
 // The Express app; server.js starts it
 const app = express();
@@ -30,7 +32,7 @@ const handle = (fn) => async (req, res) => {
     if (!res.headersSent) res.json(result);
   } catch (e) {
     console.error(`[API] ${req.method} ${req.path}:`, e.message);
-    if (!res.headersSent) res.status(400).json({ error: e.message });
+    if (!res.headersSent) res.status(e.status || 400).json({ error: e.message });
   }
 };
 
@@ -120,8 +122,11 @@ app.get('/api/tournaments', handle(async req => {
   return geocode.attach(tournaments);
 }));
 
-// Inventory (卡拍拍 賣場倉庫)
-app.get('/api/inventory', handle(() => inventory.list()));
+// Exchange rate to NT$ (JPY or CNY), live when possible
+app.get('/api/rates/:currency', handle(req => rates.getRate(String(req.params.currency).toUpperCase())));
+
+// Inventory: 賣場倉庫 (卡拍拍) and 網拍倉庫, told apart by ?channel=kapaipai|auction
+app.get('/api/inventory', handle(req => inventory.list(req.query.channel)));
 
 app.post('/api/inventory', handle(req => inventory.create(req.body)));
 
@@ -132,6 +137,29 @@ app.put('/api/inventory/:id', handle(async (req, res) => {
 app.post('/api/inventory/:id/sell', handle(async (req, res) => {
   return await inventory.sell(req.params.id, req.body) || notFound(res, '找不到這筆庫存');
 }));
+
+// Photos and videos of an item: the raw file is the body, its name in X-File-Name
+app.post('/api/inventory/:id/media', handle(async (req, res) => {
+  return await inventory.addMedia(req.params.id, req) || notFound(res, '找不到這筆庫存');
+}));
+
+app.delete('/api/inventory/:id/media/:mediaId', handle(async (req, res) => {
+  return await inventory.removeMedia(req.params.id, req.params.mediaId) || notFound(res, '找不到這個檔案');
+}));
+
+// A stored photo or video; sendFile answers range requests, so videos can be scrubbed
+app.get('/api/media/:file', (req, res) => {
+  const file = media.pathOf(req.params.file);
+  const missing = () => res.status(404).json({ error: '找不到這個檔案' });
+  if (!file) return missing();
+  if (req.query.download) res.attachment(String(req.query.download).slice(0, 120));
+  res.sendFile(file, { maxAge: '30d', immutable: true }, err => {
+    if (err && !res.headersSent) {
+      res.removeHeader('Content-Disposition');
+      missing();
+    }
+  });
+});
 
 app.delete('/api/inventory/:id', handle(async (req, res) => {
   const ok = await inventory.remove(req.params.id);

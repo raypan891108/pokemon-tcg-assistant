@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { escHtml, showToast, openModal, formatTwd } from '../utils.js';
+import { escHtml, showToast, openModal, formatTwd, copyText } from '../utils.js';
 
 // 我的牌組: your own decks. Each card has the price you paid or found (typed in, optionally
 // with the 卡拍拍 listing it came from) and how many you already own, so the page can add
@@ -349,23 +349,6 @@ function refreshTotals(deck, card) {
   if (section) section.textContent = sectionTotal(deck.cards.filter(c => c.section === card.section));
 }
 
-// Synchronous, so the copy happens before the new tab takes focus away from this page
-function copyText(text) {
-  const area = document.createElement('textarea');
-  area.value = text;
-  area.setAttribute('readonly', '');
-  area.style.cssText = 'position:fixed;opacity:0';
-  document.body.appendChild(area);
-  area.select();
-  let ok = false;
-  try {
-    ok = document.execCommand('copy');
-  } catch {
-    // Older or locked-down browsers: fall back to the Clipboard API below
-  }
-  area.remove();
-  return ok;
-}
 
 // You search 卡拍拍 yourself: this only copies the card name and opens the site, in the
 // same tab each time. Nothing is read from 卡拍拍 (its terms forbid automated access).
@@ -619,7 +602,7 @@ function openCardForm(deck, card = null) {
 async function openInventoryPicker(deck) {
   let items;
   try {
-    items = (await api.inventory()).filter(i => i.status !== 'sold');
+    items = (await api.inventory()).filter(i => i.status !== 'sold' && (!i.itemType || i.itemType === 'card'));
   } catch (e) {
     showToast(`無法載入倉庫：${escHtml(e.message)}`, 'error');
     return;

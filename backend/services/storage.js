@@ -35,8 +35,12 @@ const DEFAULT_SETTINGS = {
   fetchIntervalHours: 1,
   // 卡拍拍 seller fee (%) applied to a sale when no fee is entered
   kapaipaiFeeRate: 0,
+  // The same for 網拍倉庫 (Shopee, Yahoo 拍賣, 露天 and so on)
+  auctionFeeRate: 0,
   // Fallback when the live JPY→TWD rate can't be fetched
   jpyToTwd: 0.21,
+  // Fallback when the live CNY→TWD rate can't be fetched (for costs paid in 人民幣)
+  cnyToTwd: 4.4,
 };
 
 // A missing file returns the default; any other failure throws, so a

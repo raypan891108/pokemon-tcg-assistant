@@ -33,6 +33,28 @@ export const post = send('POST');
 export const put = send('PUT');
 export const del = (endpoint) => request(`${API}${endpoint}`, { method: 'DELETE' });
 
+// A photo or video for a warehouse item, sent as the raw file so large videos stream to disk.
+// XMLHttpRequest rather than fetch, for upload progress: onProgress(0..1).
+function uploadMedia(id, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API}/inventory/${id}/media`);
+    // Windows gives HEIC/MOV files no type; the server then goes by the file name
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.setRequestHeader('X-File-Name', encodeURIComponent(file.name));
+    xhr.upload.onprogress = e => { if (e.lengthComputable) onProgress?.(e.loaded / e.total); };
+    xhr.onload = () => {
+      let body = {};
+      try { body = JSON.parse(xhr.responseText); } catch { /* not JSON */ }
+      if (xhr.status === 401) window.dispatchEvent(new Event('auth-required'));
+      if (xhr.status >= 200 && xhr.status < 300) resolve(body);
+      else reject(new Error(body.error || `上傳失敗（${xhr.status}）`));
+    };
+    xhr.onerror = () => reject(new Error('上傳失敗，請檢查網路連線'));
+    xhr.send(file);
+  });
+}
+
 export const api = {
   stats: () => get('/stats'),
   products: (params) => get('/products', params),
@@ -51,11 +73,14 @@ export const api = {
   login: (password) => post('/auth/login', { password }),
   logout: () => post('/auth/logout'),
 
-  inventory: () => get('/inventory'),
+  rate: (currency) => get(`/rates/${currency}`),
+  inventory: (channel) => get('/inventory', { channel }),
   addInventory: (item) => post('/inventory', item),
   updateInventory: (id, item) => put(`/inventory/${id}`, item),
   sellInventory: (id, sale) => post(`/inventory/${id}/sell`, sale),
   deleteInventory: (id) => del(`/inventory/${id}`),
+  uploadMedia,
+  deleteMedia: (id, mediaId) => del(`/inventory/${id}/media/${mediaId}`),
 
   marketSearch: (q) => get('/market/search', { q }),
   watchlist: () => get('/market/watchlist'),

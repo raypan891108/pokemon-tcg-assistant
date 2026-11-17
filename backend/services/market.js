@@ -1,26 +1,13 @@
-const axios = require('axios');
 const storage = require('./storage');
+const rates = require('./rates');
 const yuyutei = require('../scrapers/yuyutei-scraper');
 const notifier = require('./notifier');
 
 const MAX_HISTORY = 200;
-const RATE_TTL_MS = 6 * 60 * 60 * 1000;
-let cachedRate = null;
 
-// JPY→TWD from a free FX API, cached; falls back to the rate in settings
+// JPY→TWD, live or the backup rate in 設定 (see rates.js)
 async function getJpyToTwd() {
-  if (cachedRate && Date.now() - cachedRate.at < RATE_TTL_MS) return cachedRate.rate;
-  try {
-    const { data } = await axios.get('https://open.er-api.com/v6/latest/JPY', { timeout: 10000 });
-    const rate = data?.rates?.TWD;
-    if (rate) {
-      cachedRate = { rate, at: Date.now() };
-      return rate;
-    }
-  } catch (e) {
-    console.error('[Market] FX rate error:', e.message);
-  }
-  return Number((await storage.getSettings()).jpyToTwd) || 0.21;
+  return (await rates.getRate('JPY')).rate || 0.21;
 }
 
 function toTwd(jpy, rate) {

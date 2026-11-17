@@ -41,12 +41,31 @@ async function backupNow() {
     await fs.promises.copyFile(src, path.join(dir, file));
     copied.push(file);
   }
+  const mediaCopied = await mirrorMedia();
   const backups = await listBackups();
   for (const old of backups.slice(0, Math.max(backups.length - KEEP, 0))) {
     await fs.promises.rm(path.join(BACKUP_DIR, old), { recursive: true, force: true });
   }
-  console.log(`[Backup] ${copied.length} file(s) → ${dir}`);
-  return { dir, files: copied };
+  console.log(`[Backup] ${copied.length} file(s) → ${dir}${mediaCopied ? `, ${mediaCopied} new photo/video file(s)` : ''}`);
+  return { dir, files: copied, mediaCopied };
+}
+
+// Photos and videos of warehouse items go to one 媒體 folder next to the daily folders: each
+// file is copied once (their names never change), so large videos aren't copied every day.
+// Files deleted on the site stay in the backup.
+async function mirrorMedia() {
+  const src = path.join(storage.dataDir, 'media');
+  const files = (await fs.promises.readdir(src).catch(() => [])).filter(f => !f.endsWith('.part'));
+  if (!files.length) return 0;
+  const dest = path.join(BACKUP_DIR, '媒體');
+  await fs.promises.mkdir(dest, { recursive: true });
+  const existing = new Set(await fs.promises.readdir(dest));
+  let copied = 0;
+  for (const file of files.filter(f => !existing.has(f))) {
+    await fs.promises.copyFile(path.join(src, file), path.join(dest, file));
+    copied++;
+  }
+  return copied;
 }
 
 // Called after every scheduled fetch; backs up at most once a day

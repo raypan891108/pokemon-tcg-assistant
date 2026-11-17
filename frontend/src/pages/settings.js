@@ -141,9 +141,21 @@ function renderSettingsForm(settings) {
       <div class="settings-title">🗃️ 賣場設定</div>
       <div class="form-group">
         <label class="form-label" for="fee-rate">卡拍拍手續費率（%）</label>
-        <input type="number" id="fee-rate" class="form-input" min="0" max="100" step="0.1"
+        <input type="number" id="fee-rate" class="form-input" min="0" max="100" step="0.001"
           value="${settings.kapaipaiFeeRate ?? 0}" style="max-width:120px">
         <div class="form-hint">記錄成交時若沒填手續費，會用「成交總額 × 費率」自動計算。請依卡拍拍實際收費填寫</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="auction-fee-rate">網拍手續費率（%）</label>
+        <input type="number" id="auction-fee-rate" class="form-input" min="0" max="100" step="0.001"
+          value="${settings.auctionFeeRate ?? 0}" style="max-width:120px">
+        <div class="form-hint">網拍倉庫用的費率。各平台收費不同（成交手續費、金流費），可填你最常用平台的總費率，個別成交時也能直接改手續費</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="cny-rate">備用人民幣匯率（1 元 = NT$）</label>
+        <input type="number" id="cny-rate" class="form-input" min="0" step="0.0001"
+          value="${settings.cnyToTwd ?? 4.4}" style="max-width:120px">
+        <div class="form-hint">倉庫用人民幣填進價時，平常會用即時匯率換算；連不上匯率網站時才用這個</div>
       </div>
       <div class="form-group">
         <label class="form-label" for="jpy-rate">備用日幣匯率（1 円 = NT$）</label>
@@ -289,10 +301,14 @@ function renderSettingsForm(settings) {
 
   document.getElementById('btn-save-seller').addEventListener('click', async () => {
     const feeRate = parseFloat(document.getElementById('fee-rate').value);
+    const auctionFeeRate = parseFloat(document.getElementById('auction-fee-rate').value);
     const jpyRate = parseFloat(document.getElementById('jpy-rate').value);
+    const cnyRate = parseFloat(document.getElementById('cny-rate').value);
     await saveSettings({
       kapaipaiFeeRate: Number.isFinite(feeRate) && feeRate >= 0 ? feeRate : 0,
+      auctionFeeRate: Number.isFinite(auctionFeeRate) && auctionFeeRate >= 0 ? auctionFeeRate : 0,
       jpyToTwd: Number.isFinite(jpyRate) && jpyRate > 0 ? jpyRate : 0.21,
+      cnyToTwd: Number.isFinite(cnyRate) && cnyRate > 0 ? cnyRate : 4.4,
     });
   });
 

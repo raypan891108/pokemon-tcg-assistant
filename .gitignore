@@ -23,6 +23,8 @@ backend/data/release_reminders.json
 backend/data/card_names.json
 backend/data/sources.json
 backend/data/geocode.json
+# Photos and videos of warehouse items
+backend/data/media/
 # Daily meta snapshots for the PTCG advisor
 backend/data/meta-history/
 # Left behind only if the site stops mid-save

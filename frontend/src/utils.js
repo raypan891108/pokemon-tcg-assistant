@@ -154,6 +154,29 @@ export function openModal(html) {
   return { el: backdrop, close };
 }
 
+// Copy text to the clipboard. Synchronous (a hidden textarea and execCommand), so it works
+// over plain http and before a new tab takes focus; falls back to the Clipboard API.
+export function copyText(text) {
+  const area = document.createElement('textarea');
+  area.value = text;
+  area.setAttribute('readonly', '');
+  area.style.cssText = 'position:fixed;opacity:0';
+  document.body.appendChild(area);
+  area.select();
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } catch {
+    // Handled below
+  }
+  area.remove();
+  if (!ok && navigator.clipboard) {
+    navigator.clipboard.writeText(text).catch(() => {});
+    return true;
+  }
+  return ok;
+}
+
 // NT$ amount, or an em dash when unknown
 export function formatTwd(n) {
   if (n === null || n === undefined || Number.isNaN(n)) return '—';
